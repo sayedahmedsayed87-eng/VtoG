@@ -158,16 +158,21 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
       </div>
     </section>
 
-    <!-- Registration screen (first-time use) -->
-    <section id="screen-registration" class="screen">
+    <!-- Shown when the Telegram account has no @username set yet -->
+    <section id="screen-no-username" class="screen">
       <div class="centerScreen">
-        <div class="icon">👤</div>
-        <h2>Set up your account</h2>
-        <p class="message">Pick a username so we know who's downloading. You only need to do this once.</p>
-        <label for="reg-username-input">Username</label>
-        <input type="text" id="reg-username-input" placeholder="e.g. john_doe">
-        <div id="reg-error" class="error-text hidden"></div>
-        <button id="registerBtn" disabled>Save and continue</button>
+        <div class="icon warningIcon">👤</div>
+        <h2>Set a Telegram username</h2>
+        <p class="message">We use your Telegram @username to set up your account automatically, and yours isn't set yet.</p>
+        <div class="warning">
+          <div class="warningTitle">To add one:</div>
+          1. Open Telegram → Settings<br>
+          2. Tap your profile / "Edit Profile"<br>
+          3. Tap "Username" and choose one, then Save<br>
+          4. Come back here and tap "Try again"
+        </div>
+        <div id="no-username-error" class="error-text hidden"></div>
+        <button id="retryUsernameBtn">Try again</button>
       </div>
     </section>
 
@@ -279,7 +284,7 @@ let currentUsername = '';
 
 // ---- Screen helpers ----
 function showScreen(id) {
-  document.querySelectorAll('#screen-loading, #screen-registration, #screen-app').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('#screen-loading, #screen-no-username, #screen-app').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
 function setFooterStatus(text) { document.getElementById('footerStatus').textContent = text; }
@@ -368,12 +373,7 @@ async function checkRegistration() {
     showScreen('screen-app');
     loadFolderTree();
   } else {
-    const prefill = (tgUser && tgUser.username) ? tgUser.username : '';
-    const input = document.getElementById('reg-username-input');
-    input.value = prefill;
-    updateRegisterEnabled();
-    setFooterStatus('Setup required');
-    showScreen('screen-registration');
+    await handleUnregistered();
   }
 }
 
@@ -386,36 +386,46 @@ function showLoadError(message) {
 }
 document.getElementById('loadingRetryBtn').onclick = checkRegistration;
 
-// ---- Registration ----
-function updateRegisterEnabled() {
-  const val = document.getElementById('reg-username-input').value.trim();
-  document.getElementById('registerBtn').disabled = val.length === 0;
-}
-document.getElementById('reg-username-input').addEventListener('input', updateRegisterEnabled);
-
-document.getElementById('registerBtn').onclick = async () => {
-  clearError('reg-error');
-  const username = document.getElementById('reg-username-input').value.trim();
-  if (!username) return;
-
-  const btn = document.getElementById('registerBtn');
-  btn.disabled = true;
-  try {
-    const result = await callApi('registerUser', { chatId, username });
-    if (result.error) {
-      showError('reg-error', result.error);
-      updateRegisterEnabled();
-      return;
-    }
-    currentUsername = result.username;
-    document.getElementById('welcome').textContent = '@' + currentUsername;
-    setFooterStatus('Ready');
-    showScreen('screen-app');
-    loadFolderTree();
-  } catch (e) {
-    showError('reg-error', 'Could not reach the server (' + (e && e.message ? e.message : 'unknown error') + ').');
-    updateRegisterEnabled();
+// ---- Registration (automatic, based on the user's Telegram @username) ----
+async function handleUnregistered() {
+  const tgUsername = (tgUser && tgUser.username) ? tgUser.username : '';
+  if (!tgUsername) {
+    // No @username on the Telegram account — guide the user to set one.
+    setFooterStatus('Setup required');
+    showScreen('screen-no-username');
+    return;
   }
+  await autoRegister(tgUsername);
+}
+
+async function autoRegister(username) {
+  showScreen('screen-loading');
+  document.getElementById('loadingIcon').textContent = '⏳';
+  document.getElementById('loadingTitle').textContent = 'Setting up your account';
+  document.getElementById('loadingMsg').textContent = 'Registering @' + username + '…';
+  document.getElementById('loadingRetryBtn').classList.add('hidden');
+  setFooterStatus('Registering…');
+
+  let result;
+  try {
+    result = await callApi('registerUser', { chatId, username });
+  } catch (e) {
+    return showLoadError('Could not reach the server (' + (e && e.message ? e.message : 'unknown error') + ').');
+  }
+  if (result.error) return showLoadError(result.error);
+
+  currentUsername = result.username;
+  document.getElementById('welcome').textContent = '@' + currentUsername;
+  setFooterStatus('Ready');
+  showScreen('screen-app');
+  loadFolderTree();
+}
+
+// Telegram only hands us initDataUnsafe.user at launch, so after the user
+// sets a username in Telegram they need a fresh launch to pick it up.
+// Reloading re-runs the Telegram WebApp bootstrap and re-reads initData.
+document.getElementById('retryUsernameBtn').onclick = () => {
+  location.reload();
 };
 
 // ---- Tabs ----
