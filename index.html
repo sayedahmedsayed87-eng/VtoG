@@ -68,6 +68,8 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .folder-row .expand-arrow{width:22px;color:var(--muted);font-size:12px;flex:none}
 .folder-row .label{flex:1;font-size:14.5px;min-width:0;overflow-wrap:anywhere}
 .folder-row .remove{flex:none;color:var(--danger);font-size:13px;font-weight:700;padding:4px 6px}
+.folder-row.locked .label{color:var(--muted);cursor:default}
+.lockBadge{flex:none;color:var(--warning);font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:99px;background:color-mix(in srgb,var(--warning) 14%,transparent);white-space:nowrap}
 .children{padding-left:20px;display:none}
 .children.open{display:block}
 .emptyNote{color:var(--muted);font-size:13.5px;padding:14px 2px;text-align:center}
@@ -206,8 +208,6 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
           <div class="add-folder-box">
             <label for="new-folder-link">Google Drive folder share link</label>
             <input type="text" id="new-folder-link" placeholder="https://drive.google.com/drive/folders/...">
-            <label for="new-folder-label">Label</label>
-            <input type="text" id="new-folder-label" placeholder="e.g. Kids">
             <div id="add-folder-error" class="error-text hidden"></div>
             <button id="add-folder-btn" disabled>Add folder</button>
           </div>
@@ -480,8 +480,10 @@ function buildFolderRow(folder) {
   const wrap = document.createElement('div');
   wrap.className = 'folderRowWrap';
 
+  const locked = folder.writable === false;
+
   const row = document.createElement('div');
-  row.className = 'folder-row';
+  row.className = 'folder-row' + (locked ? ' locked' : '');
 
   const arrow = document.createElement('span');
   arrow.className = 'expand-arrow';
@@ -490,7 +492,11 @@ function buildFolderRow(folder) {
   const label = document.createElement('span');
   label.className = 'label';
   label.textContent = folder.label;
-  label.onclick = () => chooseFolder(folder);
+  if (locked) {
+    label.title = "This folder isn't shared with Editor access anymore — choose another folder, or fix sharing in Drive.";
+  } else {
+    label.onclick = () => chooseFolder(folder);
+  }
 
   const childrenBox = document.createElement('div');
   childrenBox.className = 'children';
@@ -518,12 +524,19 @@ function buildFolderRow(folder) {
 
   row.appendChild(arrow);
   row.appendChild(label);
+  if (locked) {
+    const lock = document.createElement('span');
+    lock.className = 'lockBadge';
+    lock.textContent = '🔒 Locked';
+    row.appendChild(lock);
+  }
   wrap.appendChild(row);
   wrap.appendChild(childrenBox);
   return wrap;
 }
 
 function chooseFolder(folder) {
+  if (folder.writable === false) return; // locked folders can't be picked as a destination
   selectedFolder = folder;
   const btn = document.getElementById('folder-select-btn');
   btn.textContent = folder.label;
@@ -552,9 +565,27 @@ async function loadManageFolders() {
     const wrap = document.createElement('div');
     wrap.className = 'folderRowWrap';
     const row = document.createElement('div');
-    row.className = 'folder-row';
-    row.innerHTML = `<span class="label">${f.label}</span><span class="remove">Remove</span>`;
-    row.querySelector('.remove').onclick = () => removeExistingFolder(f);
+    row.className = 'folder-row' + (f.writable === false ? ' locked' : '');
+
+    const label = document.createElement('span');
+    label.className = 'label';
+    label.textContent = f.label;
+    row.appendChild(label);
+
+    if (f.writable === false) {
+      const lock = document.createElement('span');
+      lock.className = 'lockBadge';
+      lock.textContent = '🔒 Locked';
+      lock.title = "This folder isn't shared with Editor access anymore.";
+      row.appendChild(lock);
+    }
+
+    const remove = document.createElement('span');
+    remove.className = 'remove';
+    remove.textContent = 'Remove';
+    remove.onclick = () => removeExistingFolder(f);
+    row.appendChild(remove);
+
     wrap.appendChild(row);
     container.appendChild(wrap);
   });
@@ -582,24 +613,21 @@ function extractFolderIdFromLink(link) {
 
 function updateAddFolderEnabled() {
   const link = document.getElementById('new-folder-link').value.trim();
-  const label = document.getElementById('new-folder-label').value.trim();
-  document.getElementById('add-folder-btn').disabled = !(extractFolderIdFromLink(link) && label);
+  document.getElementById('add-folder-btn').disabled = !extractFolderIdFromLink(link);
 }
 document.getElementById('new-folder-link').addEventListener('input', updateAddFolderEnabled);
-document.getElementById('new-folder-label').addEventListener('input', updateAddFolderEnabled);
 
 document.getElementById('add-folder-btn').onclick = async () => {
   clearError('add-folder-error');
   const link = document.getElementById('new-folder-link').value.trim();
-  const label = document.getElementById('new-folder-label').value.trim();
   const folderId = extractFolderIdFromLink(link);
-  if (!folderId || !label) return;
+  if (!folderId) return;
 
   const btn = document.getElementById('add-folder-btn');
   btn.disabled = true;
   let result;
   try {
-    result = await callApi('addFolder', { chatId, folderId, label });
+    result = await callApi('addFolder', { chatId, folderId });
   } catch (e) {
     showError('add-folder-error', 'Could not reach the server (' + (e && e.message ? e.message : 'unknown error') + ').');
     updateAddFolderEnabled();
@@ -623,7 +651,6 @@ document.getElementById('add-folder-btn').onclick = async () => {
   }
 
   document.getElementById('new-folder-link').value = '';
-  document.getElementById('new-folder-label').value = '';
   updateAddFolderEnabled();
   loadManageFolders();
 };
@@ -721,7 +748,7 @@ function showProgressResult(isError, title, msg) {
 const HELP_CONTENT = [
   { q: 'How do I download a video?', a: 'Paste a Facebook, Instagram, YouTube or X (Twitter) link, give it a name, choose a destination folder, then tap Download. You can also start this from the Telegram bot by sharing a link directly.' },
   { q: 'Why is the Download button greyed out?', a: 'All three fields — the link, the name, and the destination folder — need to be filled in before the button unlocks.' },
-  { q: 'How do I add a Drive folder?', a: 'Go to Settings, paste a Google Drive folder share link and give it a short label, then tap Add folder. It will then show up when choosing a destination.' },
+  { q: 'How do I add a Drive folder?', a: 'Go to Settings and paste a Google Drive folder share link, then tap Add folder. Its name is pulled straight from Drive, and it will then show up when choosing a destination.' },
   { q: 'How do I remove a folder?', a: 'In Settings, tap Remove next to any folder in your list. This only removes it from this app — it does not delete the folder from Drive.' },
   { q: 'What happens if I hit my quota?', a: 'Each account has a download quota that resets on a regular period. If you go over it, new downloads are blocked until the next period starts.' }
 ];
