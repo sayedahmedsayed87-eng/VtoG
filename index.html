@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Video Downloader</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: var(--tg-theme-bg-color, #ffffff);
+    --text: var(--tg-theme-text-color, #1c1c1e);
+    --hint: var(--tg-theme-hint-color, #8e8e93);
+    --link: var(--tg-theme-link-color, #2481cc);
+    --button: var(--tg-theme-button-color, #2481cc);
+    --button-text: var(--tg-theme-button-text-color, #ffffff);
+    --secondary-bg: var(--tg-theme-secondary-bg-color, #f2f2f7);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 16px;
+  }
+  .screen { display: none; }
+  .screen.active { display: block; }
+  h2 { font-size: 17px; font-weight: 600; margin: 0 0 16px; }
+  label { display: block; font-size: 13px; color: var(--hint); margin: 16px 0 6px; }
+  label:first-of-type { margin-top: 0; }
+  input[type="text"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 10px;
+    background: var(--secondary-bg);
+    color: var(--text);
+    font-size: 15px;
+  }
+  input[type="text"]:focus { outline: 2px solid var(--link); }
+  .folder-select {
+    width: 100%;
+    text-align: left;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 10px;
+    background: var(--secondary-bg);
+    color: var(--text);
+    font-size: 15px;
+  }
+  .folder-select.placeholder { color: var(--hint); }
+  .btn-row { display: flex; gap: 10px; margin-top: 24px; }
+  button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-primary { background: var(--button); color: var(--button-text); }
+  .btn-secondary { background: var(--secondary-bg); color: var(--text); }
+  .btn-primary:disabled { opacity: 0.5; }
+  .back-link {
+    background: none;
+    border: none;
+    color: var(--link);
+    font-size: 15px;
+    padding: 0 0 16px;
+    text-align: left;
+    flex: none;
+    width: auto;
+  }
+  .folder-tree { max-height: 340px; overflow-y: auto; }
+  .folder-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 4px;
+    border-bottom: 1px solid var(--secondary-bg);
+    cursor: pointer;
+  }
+  .folder-row .expand-arrow {
+    width: 24px;
+    color: var(--hint);
+    font-size: 12px;
+  }
+  .folder-row .label { flex: 1; font-size: 15px; }
+  .folder-row .remove { color: #e53935; font-size: 13px; padding: 4px 8px; }
+  .children { padding-left: 22px; display: none; }
+  .children.open { display: block; }
+  .add-folder-box { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--secondary-bg); }
+  .error-text { color: #e53935; font-size: 13px; margin-top: 8px; }
+  .stage-list { list-style: none; padding: 0; margin: 24px 0; }
+  .stage-list li {
+    padding: 14px 0;
+    font-size: 15px;
+    color: var(--hint);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .stage-list li.active { color: var(--text); font-weight: 600; }
+  .stage-list li.done { color: var(--link); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--hint); flex: none; }
+  .stage-list li.active .dot { background: var(--link); animation: pulse 1s infinite; }
+  .stage-list li.done .dot { background: var(--link); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .result-text { font-size: 15px; margin-top: 8px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div id="screen-main" class="screen active">
+  <h2>New download</h2>
+  <label for="url-input">Video link</label>
+  <input type="text" id="url-input" placeholder="Paste a Facebook, Instagram, YouTube or X link">
+
+  <label for="name-input">Save as</label>
+  <input type="text" id="name-input" placeholder="Video name">
+
+  <label>Destination folder</label>
+  <button class="folder-select placeholder" id="folder-select-btn" onclick="openFolderPicker()">Choose a folder</button>
+
+  <div id="main-error" class="error-text hidden"></div>
+
+  <div class="btn-row">
+    <button class="btn-secondary" onclick="closeApp()">Cancel</button>
+    <button class="btn-primary" id="download-btn" onclick="submitDownload()">Download</button>
+  </div>
+</div>
+
+<div id="screen-folder-picker" class="screen">
+  <button class="back-link" onclick="showScreen('screen-main')">‹ Back</button>
+  <h2>Choose a folder</h2>
+  <div class="folder-tree" id="folder-tree"></div>
+  <div class="btn-row">
+    <button class="btn-secondary" onclick="showScreen('screen-manage-folders'); loadManageFolders();">Manage folders</button>
+  </div>
+</div>
+
+<div id="screen-manage-folders" class="screen">
+  <button class="back-link" onclick="showScreen('screen-main')">‹ Back</button>
+  <h2>Your root folders</h2>
+  <div class="folder-tree" id="manage-folder-list"></div>
+
+  <div class="add-folder-box">
+    <label for="new-folder-link">Google Drive folder share link</label>
+    <input type="text" id="new-folder-link" placeholder="https://drive.google.com/drive/folders/...">
+    <label for="new-folder-label">Label</label>
+    <input type="text" id="new-folder-label" placeholder="e.g. Kids">
+    <div id="add-folder-error" class="error-text hidden"></div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="addNewFolder()">Add folder</button>
+    </div>
+  </div>
+</div>
+
+<div id="screen-progress" class="screen">
+  <h2>Downloading</h2>
+  <ul class="stage-list" id="stage-list">
+    <li id="stage-downloading"><span class="dot"></span> Downloading</li>
+    <li id="stage-uploading"><span class="dot"></span> Uploading to Drive</li>
+    <li id="stage-finished"><span class="dot"></span> Done</li>
+  </ul>
+  <div id="progress-result" class="result-text hidden"></div>
+  <div class="btn-row">
+    <button class="btn-secondary" onclick="closeApp()">Close</button>
+  </div>
+</div>
+
+<script>
+// ---- Configuration ----
+const APPS_SCRIPT_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
+
+// ---- Telegram setup ----
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
+
+const initData = tg.initData || '';
+const chatId = tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
+
+let selectedFolder = null; // { label, driveFolderId }
+let pollTimer = null;
+
+// ---- Init ----
+window.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(window.location.search);
+  const prefillUrl = params.get('url');
+  if (prefillUrl) document.getElementById('url-input').value = prefillUrl;
+});
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showError(elementId, message) {
+  const el = document.getElementById(elementId);
+  el.textContent = message;
+  el.classList.remove('hidden');
+}
+
+function clearError(elementId) {
+  document.getElementById(elementId).classList.add('hidden');
+}
+
+// ---- API helper ----
+async function callApi(action, params, method) {
+  method = method || 'GET';
+  if (method === 'GET') {
+    const query = new URLSearchParams(Object.assign({ action, initData }, params)).toString();
+    const res = await fetch(`${APPS_SCRIPT_URL}?${query}`);
+    return res.json();
+  }
+  const res = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify(Object.assign({ action, initData }, params))
+  });
+  return res.json();
+}
+
+// ---- Folder picker ----
+function openFolderPicker() {
+  showScreen('screen-folder-picker');
+  loadFolderTree();
+}
+
+async function loadFolderTree() {
+  const container = document.getElementById('folder-tree');
+  container.innerHTML = '<div class="folder-row"><span class="label">Loading…</span></div>';
+  const folders = await callApi('listRootFolders', { chatId });
+  container.innerHTML = '';
+  if (!folders.length) {
+    container.innerHTML = '<div class="folder-row"><span class="label">No folders yet — add one below.</span></div>';
+    return;
+  }
+  folders.forEach(f => container.appendChild(buildFolderRow(f)));
+}
+
+function buildFolderRow(folder) {
+  const row = document.createElement('div');
+  row.className = 'folder-row';
+
+  const arrow = document.createElement('span');
+  arrow.className = 'expand-arrow';
+  arrow.textContent = '›';
+
+  const label = document.createElement('span');
+  label.className = 'label';
+  label.textContent = folder.label;
+  label.onclick = () => chooseFolder(folder);
+
+  const childrenBox = document.createElement('div');
+  childrenBox.className = 'children';
+
+  arrow.onclick = async () => {
+    if (childrenBox.classList.contains('open')) {
+      childrenBox.classList.remove('open');
+      arrow.textContent = '›';
+      return;
+    }
+    childrenBox.innerHTML = '<div class="folder-row"><span class="label">Loading…</span></div>';
+    const children = await callApi('listChildFolders', { chatId, parentId: folder.driveFolderId });
+    childrenBox.innerHTML = '';
+    if (!children.length) {
+      childrenBox.innerHTML = '<div class="folder-row"><span class="label">No subfolders</span></div>';
+    } else {
+      children.forEach(c => childrenBox.appendChild(buildFolderRow(c)));
+    }
+    childrenBox.classList.add('open');
+    arrow.textContent = '⌄';
+  };
+
+  row.appendChild(arrow);
+  row.appendChild(label);
+  row.appendChild(childrenBox);
+
+  const wrapper = document.createElement('div');
+  wrapper.appendChild(row);
+  return wrapper;
+}
+
+function chooseFolder(folder) {
+  selectedFolder = folder;
+  const btn = document.getElementById('folder-select-btn');
+  btn.textContent = folder.label;
+  btn.classList.remove('placeholder');
+  showScreen('screen-main');
+}
+
+// ---- Manage folders ----
+async function loadManageFolders() {
+  const container = document.getElementById('manage-folder-list');
+  container.innerHTML = '<div class="folder-row"><span class="label">Loading…</span></div>';
+  const folders = await callApi('listRootFolders', { chatId });
+  container.innerHTML = '';
+  if (!folders.length) {
+    container.innerHTML = '<div class="folder-row"><span class="label">No root folders yet.</span></div>';
+    return;
+  }
+  folders.forEach(f => {
+    const row = document.createElement('div');
+    row.className = 'folder-row';
+    row.innerHTML = `<span class="label">${f.label}</span><span class="remove">Remove</span>`;
+    row.querySelector('.remove').onclick = () => removeExistingFolder(f);
+    container.appendChild(row);
+  });
+}
+
+async function removeExistingFolder(folder) {
+  await callApi('removeFolder', { chatId, folderId: folder.driveFolderId }, 'POST');
+  loadManageFolders();
+}
+
+function extractFolderIdFromLink(link) {
+  const match = link.match(/folders\/([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : null;
+}
+
+async function addNewFolder() {
+  clearError('add-folder-error');
+  const link = document.getElementById('new-folder-link').value.trim();
+  const label = document.getElementById('new-folder-label').value.trim();
+  const folderId = extractFolderIdFromLink(link);
+
+  if (!folderId) return showError('add-folder-error', 'That doesn\'t look like a Drive folder link.');
+  if (!label) return showError('add-folder-error', 'Give the folder a label.');
+
+  const result = await callApi('addFolder', { chatId, folderId, label }, 'POST');
+
+  if (result.conflict) {
+    const messages = {
+      exact: `Already mapped as "${result.conflict.label}".`,
+      already_inside: `This folder is already inside "${result.conflict.label}" — no need to add it separately.`,
+      would_be_redundant: `"${result.conflict.label}" is a subfolder of this one. Consider removing that entry.`
+    };
+    return showError('add-folder-error', messages[result.conflict.conflict] || 'This folder conflicts with an existing one.');
+  }
+
+  document.getElementById('new-folder-link').value = '';
+  document.getElementById('new-folder-label').value = '';
+  loadManageFolders();
+}
+
+// ---- Submit download ----
+async function submitDownload() {
+  clearError('main-error');
+  const url = document.getElementById('url-input').value.trim();
+  const name = document.getElementById('name-input').value.trim();
+
+  if (!url) return showError('main-error', 'Paste a video link first.');
+  if (!selectedFolder) return showError('main-error', 'Choose a destination folder.');
+
+  document.getElementById('download-btn').disabled = true;
+
+  const result = await callApi('submitDownload', {
+    chatId,
+    url,
+    customName: name,
+    destFolderId: selectedFolder.driveFolderId
+  }, 'POST');
+
+  document.getElementById('download-btn').disabled = false;
+
+  if (result.error) return showError('main-error', result.error);
+
+  showScreen('screen-progress');
+  pollJobStatus(result.jobId);
+}
+
+// ---- Progress polling ----
+function pollJobStatus(jobId) {
+  const stages = { downloading: 'stage-downloading', uploading: 'stage-uploading', finished: 'stage-finished' };
+
+  pollTimer = setInterval(async () => {
+    const status = await callApi('getJobStatus', { jobId });
+    if (!status || status.error) return;
+
+    Object.values(stages).forEach(id => document.getElementById(id).classList.remove('active', 'done'));
+
+    if (status.status === 'downloading') {
+      document.getElementById(stages.downloading).classList.add('active');
+    } else if (status.status === 'uploading') {
+      document.getElementById(stages.downloading).classList.add('done');
+      document.getElementById(stages.uploading).classList.add('active');
+    } else if (status.status === 'finished') {
+      document.getElementById(stages.downloading).classList.add('done');
+      document.getElementById(stages.uploading).classList.add('done');
+      document.getElementById(stages.finished).classList.add('done');
+      showResult(`Saved ${status.customName} (${status.sizeMb}MB).`);
+      clearInterval(pollTimer);
+    } else if (status.status === 'failed') {
+      showResult(`Couldn't finish this download. ${status.errorMessage || ''}`);
+      clearInterval(pollTimer);
+    }
+  }, 3000);
+}
+
+function showResult(text) {
+  const el = document.getElementById('progress-result');
+  el.textContent = text;
+  el.classList.remove('hidden');
+}
+
+function closeApp() {
+  tg.close();
+}
+</script>
+</body>
+</html>
