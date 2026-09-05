@@ -68,6 +68,8 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .folder-row .expand-arrow{width:22px;color:var(--muted);font-size:12px;flex:none}
 .folder-row .label{flex:1;font-size:14.5px;min-width:0;overflow-wrap:anywhere}
 .folder-row .remove{flex:none;color:var(--danger);font-size:13px;font-weight:700;padding:4px 6px}
+.folder-row .remove-emoji{flex:none;font-size:18px;line-height:1;padding:4px 6px;cursor:pointer;user-select:none;background:none;border:0}
+.folder-row .remove-emoji:active{transform:scale(.88)}
 .folder-row.locked .label{color:var(--muted);cursor:default}
 .lockBadge{flex:none;color:var(--warning);font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:99px;background:color-mix(in srgb,var(--warning) 14%,transparent);white-space:nowrap}
 .children{padding-left:20px;display:none}
@@ -119,6 +121,14 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .stage-progress.show{display:block}
 .stage-progress:after{content:"";display:block;width:35%;height:100%;background:var(--button);animation:progressAnim 1.05s ease-in-out infinite}
 @keyframes progressAnim{from{transform:translateX(-300%)}to{transform:translateX(300%)}}
+
+.spinner{width:15px;height:15px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;flex:none;display:inline-block}
+.spinner.dark{border-color:color-mix(in srgb,var(--muted) 30%,transparent);border-top-color:var(--button)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loadingRow{display:flex!important;align-items:center;justify-content:center;gap:9px}
+
+.confirmButtons{display:flex;gap:10px;margin-top:14px}
+.confirmButtons button{margin-top:0;flex:1}
 
 @media (max-height:700px){
   .app{padding-top:max(8px,env(safe-area-inset-top));padding-bottom:max(12px,env(safe-area-inset-bottom))}
@@ -253,6 +263,19 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
   </div>
 </div>
 
+<!-- Remove folder confirmation overlay -->
+<div id="removeConfirmOverlay" class="help-overlay hidden">
+  <div class="help-inner" style="text-align:center">
+    <div class="icon warningIcon" style="margin:0 auto 12px">⚠️</div>
+    <h2>Remove this folder?</h2>
+    <p class="message" id="removeConfirmMsg">This only removes it from the app — it won't delete the folder from Drive.</p>
+    <div class="confirmButtons">
+      <button type="button" id="removeCancelBtn">Cancel</button>
+      <button type="button" id="removeConfirmBtn" class="danger">Remove</button>
+    </div>
+  </div>
+</div>
+
 <!-- Help overlay -->
 <div id="helpOverlay" class="help-overlay hidden">
   <div class="help-inner">
@@ -298,6 +321,21 @@ function clearError(elementId) {
 }
 function openOverlay(id) { document.getElementById(id).classList.remove('hidden'); }
 function closeOverlay(id) { document.getElementById(id).classList.add('hidden'); }
+
+// ---- Loading-state helpers (any action that hits the server gets a visible loading line) ----
+function setButtonLoading(btn, isLoading, loadingText) {
+  if (isLoading) {
+    if (btn.dataset.originalHtml === undefined) btn.dataset.originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span><span>' + (loadingText || 'Please wait…') + '</span>';
+  } else if (btn.dataset.originalHtml !== undefined) {
+    btn.innerHTML = btn.dataset.originalHtml;
+    delete btn.dataset.originalHtml;
+  }
+}
+function loadingRowHtml(text) {
+  return '<div class="emptyNote loadingRow"><span class="spinner dark"></span>' + text + '</div>';
+}
 
 // ---- API helper (JSONP — avoids fetch()/XHR CORS and redirect issues on mobile WebViews) ----
 let __jsonpSeq = 0;
@@ -460,7 +498,7 @@ document.getElementById('folderPickerCloseBtn').onclick = () => closeOverlay('fo
 
 async function loadFolderTree() {
   const container = document.getElementById('folder-tree');
-  container.innerHTML = '<div class="emptyNote">Loading…</div>';
+  container.innerHTML = loadingRowHtml('Loading folders…');
   let folders;
   try {
     folders = await callApi('listRootFolders', { chatId });
@@ -507,7 +545,7 @@ function buildFolderRow(folder) {
       arrow.textContent = '›';
       return;
     }
-    childrenBox.innerHTML = '<div class="emptyNote">Loading…</div>';
+    childrenBox.innerHTML = loadingRowHtml('Loading…');
     let children = [];
     try {
       children = await callApi('listChildFolders', { chatId, parentId: folder.driveFolderId });
@@ -548,7 +586,7 @@ function chooseFolder(folder) {
 // ---- Settings tab: manage folders ----
 async function loadManageFolders() {
   const container = document.getElementById('manage-folder-list');
-  container.innerHTML = '<div class="emptyNote">Loading…</div>';
+  container.innerHTML = loadingRowHtml('Loading folders…');
   let folders;
   try {
     folders = await callApi('listRootFolders', { chatId });
@@ -581,9 +619,11 @@ async function loadManageFolders() {
     }
 
     const remove = document.createElement('span');
-    remove.className = 'remove';
-    remove.textContent = 'Remove';
-    remove.onclick = () => removeExistingFolder(f);
+    remove.className = 'remove-emoji';
+    remove.textContent = '🗑️';
+    remove.setAttribute('role', 'button');
+    remove.setAttribute('aria-label', 'Remove ' + f.label);
+    remove.onclick = () => openRemoveConfirm(f);
     row.appendChild(remove);
 
     wrap.appendChild(row);
@@ -591,10 +631,42 @@ async function loadManageFolders() {
   });
 }
 
-async function removeExistingFolder(folder) {
+// ---- Remove folder confirmation ----
+let pendingRemoveFolder = null;
+
+function openRemoveConfirm(folder) {
+  pendingRemoveFolder = folder;
+  document.getElementById('removeConfirmMsg').textContent =
+    `Remove "${folder.label}" from the app? This won't delete the folder from Drive.`;
+  openOverlay('removeConfirmOverlay');
+}
+
+document.getElementById('removeCancelBtn').onclick = () => {
+  pendingRemoveFolder = null;
+  closeOverlay('removeConfirmOverlay');
+};
+
+document.getElementById('removeConfirmOverlay').addEventListener('click', function (e) {
+  if (e.target === this) { pendingRemoveFolder = null; closeOverlay('removeConfirmOverlay'); }
+});
+
+document.getElementById('removeConfirmBtn').onclick = async () => {
+  if (!pendingRemoveFolder) return;
+  const folder = pendingRemoveFolder;
+  const confirmBtn = document.getElementById('removeConfirmBtn');
+  const cancelBtn = document.getElementById('removeCancelBtn');
+  setButtonLoading(confirmBtn, true, 'Removing…');
+  cancelBtn.disabled = true;
+
   try {
     await callApi('removeFolder', { chatId, folderId: folder.driveFolderId });
   } catch (e) { /* ignore, list refresh will show current state */ }
+
+  setButtonLoading(confirmBtn, false);
+  cancelBtn.disabled = false;
+  pendingRemoveFolder = null;
+  closeOverlay('removeConfirmOverlay');
+
   loadManageFolders();
   // clear a stale selection if it pointed at the removed folder
   if (selectedFolder && selectedFolder.driveFolderId === folder.driveFolderId) {
@@ -604,7 +676,7 @@ async function removeExistingFolder(folder) {
     btn.classList.add('placeholder');
     updateDownloadEnabled();
   }
-}
+};
 
 function extractFolderIdFromLink(link) {
   const match = link.match(/folders\/([a-zA-Z0-9_-]+)/);
@@ -624,11 +696,12 @@ document.getElementById('add-folder-btn').onclick = async () => {
   if (!folderId) return;
 
   const btn = document.getElementById('add-folder-btn');
-  btn.disabled = true;
+  setButtonLoading(btn, true, 'Adding folder…');
   let result;
   try {
     result = await callApi('addFolder', { chatId, folderId });
   } catch (e) {
+    setButtonLoading(btn, false);
     showError('add-folder-error', 'Could not reach the server (' + (e && e.message ? e.message : 'unknown error') + ').');
     updateAddFolderEnabled();
     return;
@@ -640,16 +713,19 @@ document.getElementById('add-folder-btn').onclick = async () => {
       already_inside: `This folder is already inside "${result.conflict.label}" — no need to add it separately.`,
       would_be_redundant: `"${result.conflict.label}" is a subfolder of this one. Consider removing that entry.`
     };
+    setButtonLoading(btn, false);
     showError('add-folder-error', messages[result.conflict.conflict] || 'This folder conflicts with an existing one.');
     updateAddFolderEnabled();
     return;
   }
   if (result.error) {
+    setButtonLoading(btn, false);
     showError('add-folder-error', result.error);
     updateAddFolderEnabled();
     return;
   }
 
+  setButtonLoading(btn, false);
   document.getElementById('new-folder-link').value = '';
   updateAddFolderEnabled();
   loadManageFolders();
@@ -663,7 +739,7 @@ document.getElementById('download-btn').onclick = async () => {
   if (!url || !name || !selectedFolder) return;
 
   const btn = document.getElementById('download-btn');
-  btn.disabled = true;
+  setButtonLoading(btn, true, 'Starting…');
 
   let result;
   try {
@@ -671,17 +747,20 @@ document.getElementById('download-btn').onclick = async () => {
       chatId, url, customName: name, destFolderId: selectedFolder.driveFolderId
     });
   } catch (e) {
+    setButtonLoading(btn, false);
     showError('main-error', 'Could not reach the server (' + (e && e.message ? e.message : 'unknown error') + ').');
     updateDownloadEnabled();
     return;
   }
 
   if (result.error) {
+    setButtonLoading(btn, false);
     showError('main-error', result.error);
     updateDownloadEnabled();
     return;
   }
 
+  setButtonLoading(btn, false);
   openOverlay('progressOverlay');
   document.getElementById('progress-warning').classList.add('hidden');
   ['stage-downloading', 'stage-uploading', 'stage-finished'].forEach(id => document.getElementById(id).classList.remove('active', 'done'));
