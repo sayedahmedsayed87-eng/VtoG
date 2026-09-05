@@ -340,7 +340,7 @@ async function checkRegistration() {
   try {
     result = await callApi('checkUser', { chatId });
   } catch (e) {
-    return showLoadError('Could not reach the server. Check your connection and try again.');
+    return showLoadError('Could not reach the server (' + (e && e.message ? e.message : 'unknown error') + ').');
   }
   if (result.error) return showLoadError(result.error);
 
@@ -396,7 +396,7 @@ document.getElementById('registerBtn').onclick = async () => {
     showScreen('screen-app');
     loadFolderTree();
   } catch (e) {
-    showError('reg-error', 'Could not reach the server. Try again.');
+    showError('reg-error', 'Could not reach the server (' + (e && e.message ? e.message : 'unknown error') + ').');
     updateRegisterEnabled();
   }
 };
@@ -574,7 +574,7 @@ document.getElementById('add-folder-btn').onclick = async () => {
   try {
     result = await callApi('addFolder', { chatId, folderId, label }, 'POST');
   } catch (e) {
-    showError('add-folder-error', 'Could not reach the server. Try again.');
+    showError('add-folder-error', 'Could not reach the server (' + (e && e.message ? e.message : 'unknown error') + ').');
     updateAddFolderEnabled();
     return;
   }
@@ -617,7 +617,7 @@ document.getElementById('download-btn').onclick = async () => {
       chatId, url, customName: name, destFolderId: selectedFolder.driveFolderId
     }, 'POST');
   } catch (e) {
-    showError('main-error', 'Could not reach the server. Try again.');
+    showError('main-error', 'Could not reach the server (' + (e && e.message ? e.message : 'unknown error') + ').');
     updateDownloadEnabled();
     return;
   }
