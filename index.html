@@ -1,172 +1,263 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
+<script>
+window.onerror = function(msg, url, line, col, error) {
+  document.body.innerHTML = '<pre style="padding:16px;white-space:pre-wrap;font-size:12px;color:red;background:#fff">JS ERROR:\n' + msg + '\nLine ' + line + ':' + col + '\n\n' + (error && error.stack || '') + '</pre>';
+};
+window.addEventListener('unhandledrejection', function(e) {
+  document.body.innerHTML = '<pre style="padding:16px;white-space:pre-wrap;font-size:12px;color:red;background:#fff">UNHANDLED PROMISE REJECTION:\n' + (e.reason && (e.reason.stack || e.reason.message || e.reason) || e.reason) + '</pre>';
+});
+</script>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Video Downloader</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-  :root {
-    --bg: var(--tg-theme-bg-color, #ffffff);
-    --text: var(--tg-theme-text-color, #1c1c1e);
-    --hint: var(--tg-theme-hint-color, #8e8e93);
-    --link: var(--tg-theme-link-color, #2481cc);
-    --button: var(--tg-theme-button-color, #2481cc);
-    --button-text: var(--tg-theme-button-text-color, #ffffff);
-    --secondary-bg: var(--tg-theme-secondary-bg-color, #f2f2f7);
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    padding: 16px;
-  }
-  .screen { display: none; }
-  .screen.active { display: block; }
-  h2 { font-size: 17px; font-weight: 600; margin: 0 0 16px; }
-  label { display: block; font-size: 13px; color: var(--hint); margin: 16px 0 6px; }
-  label:first-of-type { margin-top: 0; }
-  input[type="text"] {
-    width: 100%;
-    padding: 10px 12px;
-    border: none;
-    border-radius: 10px;
-    background: var(--secondary-bg);
-    color: var(--text);
-    font-size: 15px;
-  }
-  input[type="text"]:focus { outline: 2px solid var(--link); }
-  .folder-select {
-    width: 100%;
-    text-align: left;
-    padding: 10px 12px;
-    border: none;
-    border-radius: 10px;
-    background: var(--secondary-bg);
-    color: var(--text);
-    font-size: 15px;
-  }
-  .folder-select.placeholder { color: var(--hint); }
-  .btn-row { display: flex; gap: 10px; margin-top: 24px; }
-  button {
-    flex: 1;
-    padding: 12px;
-    border: none;
-    border-radius: 10px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .btn-primary { background: var(--button); color: var(--button-text); }
-  .btn-secondary { background: var(--secondary-bg); color: var(--text); }
-  .btn-primary:disabled { opacity: 0.5; }
-  .back-link {
-    background: none;
-    border: none;
-    color: var(--link);
-    font-size: 15px;
-    padding: 0 0 16px;
-    text-align: left;
-    flex: none;
-    width: auto;
-  }
-  .folder-tree { max-height: 340px; overflow-y: auto; }
-  .folder-row {
-    display: flex;
-    align-items: center;
-    padding: 10px 4px;
-    border-bottom: 1px solid var(--secondary-bg);
-    cursor: pointer;
-  }
-  .folder-row .expand-arrow {
-    width: 24px;
-    color: var(--hint);
-    font-size: 12px;
-  }
-  .folder-row .label { flex: 1; font-size: 15px; }
-  .folder-row .remove { color: #e53935; font-size: 13px; padding: 4px 8px; }
-  .children { padding-left: 22px; display: none; }
-  .children.open { display: block; }
-  .add-folder-box { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--secondary-bg); }
-  .error-text { color: #e53935; font-size: 13px; margin-top: 8px; }
-  .stage-list { list-style: none; padding: 0; margin: 24px 0; }
-  .stage-list li {
-    padding: 14px 0;
-    font-size: 15px;
-    color: var(--hint);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .stage-list li.active { color: var(--text); font-weight: 600; }
-  .stage-list li.done { color: var(--link); }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--hint); flex: none; }
-  .stage-list li.active .dot { background: var(--link); animation: pulse 1s infinite; }
-  .stage-list li.done .dot { background: var(--link); }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
-  .result-text { font-size: 15px; margin-top: 8px; }
-  .hidden { display: none !important; }
+:root{--bg:var(--tg-theme-bg-color,#f5f5f5);--surface:var(--tg-theme-secondary-bg-color,#fff);--text:var(--tg-theme-text-color,#111);--muted:#6b6b6b;--button:var(--tg-theme-button-color,#2481cc);--buttonText:var(--tg-theme-button-text-color,#fff);--danger:#d9534f;--success:#239b56;--warning:#b7791f;--border:rgba(127,127,127,.16)}
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
+body{height:100vh;height:100dvh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+.app{width:min(100%,480px);height:100vh;height:100dvh;margin:auto;padding:max(14px,env(safe-area-inset-top)) clamp(14px,5vw,22px) max(22px,env(safe-area-inset-bottom));display:flex;flex-direction:column;overflow-y:auto}
+
+.header{padding:8px 2px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;position:sticky;top:0;background:var(--bg);z-index:10}
+.headerText{min-width:0}
+.business-name{font-size:clamp(19px,5vw,23px);font-weight:850;line-height:1.25;letter-spacing:-.3px}
+.user-name{margin-top:4px;color:var(--muted);font-size:13px;font-weight:600;line-height:1.4;overflow-wrap:anywhere}
+.header-actions{flex:none}
+.help-fab{flex:none;width:auto;min-height:0;margin:0;padding:9px 14px 9px 12px;border-radius:99px;display:flex;align-items:center;gap:7px;background:var(--surface);color:var(--button);border:1px solid var(--border);box-shadow:0 6px 18px rgba(0,0,0,.10);font-size:13px;font-weight:800;white-space:nowrap}
+.help-fab svg{width:18px;height:18px;flex:none}
+.help-fab:active{transform:scale(.95)}
+
+.main{flex:1;display:flex;flex-direction:column;justify-content:flex-start;padding-top:2px}
+.screen{display:none}
+.screen.active{display:block}
+
+.centerScreen{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:clamp(22px,6.5vw,32px);text-align:center;box-shadow:0 10px 32px rgba(0,0,0,.06)}
+.icon{width:clamp(64px,18vw,76px);height:clamp(64px,18vw,76px);margin:0 auto 16px;border-radius:50%;display:grid;place-items:center;font-size:clamp(28px,8vw,34px);background:color-mix(in srgb,var(--button) 11%,transparent)}
+.icon.success{background:color-mix(in srgb,var(--success) 13%,transparent)!important}
+.icon.warningIcon{background:color-mix(in srgb,var(--warning) 14%,transparent)!important}
+h2{margin:0;font-size:clamp(19px,5.5vw,23px);font-weight:850}
+.message{min-height:18px;margin:8px 0 18px;color:var(--muted);line-height:1.6;font-size:14px}
+
+label,.formLabel{display:block;font-size:12px;color:var(--muted);margin:14px 0 5px;font-weight:750}
+label:first-of-type,.formLabel:first-of-type{margin-top:0}
+input[type=text]{width:100%;padding:11px 13px;border-radius:11px;border:1px solid var(--border);background:var(--bg);color:var(--text);font:inherit;font-size:14.5px}
+input[type=text]:focus{outline:2px solid color-mix(in srgb,var(--button) 40%,transparent);outline-offset:1px}
+.folder-select{width:100%;text-align:left;padding:11px 13px;border-radius:11px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:14.5px;cursor:pointer}
+.folder-select.placeholder{color:var(--muted)}
+
+button{width:100%;min-height:52px;margin-top:14px;padding:12px 16px;border:0;border-radius:15px;font:inherit;font-size:clamp(15px,4.2vw,16px);font-weight:800;color:var(--buttonText);background:var(--button);cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;gap:8px}
+button:disabled{opacity:.45;cursor:default}
+button.danger{background:var(--danger)}
+button.secondary{color:var(--text);background:color-mix(in srgb,var(--muted) 10%,transparent)}
+button.back,.cancelText{color:var(--button);background:transparent;border:0;font-size:14px;min-height:38px;font-weight:700}
+
+.error-text,.formHint-error{color:var(--danger);font-size:12.5px;margin-top:8px;min-height:0}
+.hidden{display:none!important}
+
+.tabs{flex:none;display:flex;gap:6px;margin-top:2px}
+.tab{flex:1;min-height:0;margin:0;padding:11px 8px;border-radius:14px 14px 0 0;background:color-mix(in srgb,var(--muted) 9%,transparent);color:var(--muted);font-size:14px;font-weight:800;position:relative;top:1px;box-shadow:none}
+.tab.active{background:var(--surface);color:var(--button);top:0;border:1px solid var(--border);border-bottom-color:var(--surface)}
+.tabContent{background:var(--surface);border:1px solid var(--border);border-radius:0 16px 16px 16px;padding:16px 16px 18px;flex:1;min-height:0}
+.tabPane{display:none}
+.tabPane.active{display:block}
+
+.folder-tree{max-height:340px;overflow-y:auto}
+.folderRowWrap{background:color-mix(in srgb,var(--muted) 6%,var(--surface));border:1px solid var(--border);border-radius:14px;padding:4px 12px;margin:8px 0}
+.folder-row{display:flex;align-items:center;gap:8px;padding:10px 0;cursor:pointer}
+.folder-row .expand-arrow{width:22px;color:var(--muted);font-size:12px;flex:none}
+.folder-row .label{flex:1;font-size:14.5px;min-width:0;overflow-wrap:anywhere}
+.folder-row .remove{flex:none;color:var(--danger);font-size:13px;font-weight:700;padding:4px 6px}
+.children{padding-left:20px;display:none}
+.children.open{display:block}
+.emptyNote{color:var(--muted);font-size:13.5px;padding:14px 2px;text-align:center}
+
+.add-folder-box{margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}
+
+.card{background:color-mix(in srgb,var(--muted) 6%,var(--surface));border:1px solid var(--border);border-radius:16px;padding:2px 16px;margin:2px 0 4px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid var(--border)}
+.row:last-child{border-bottom:0}
+.rowText{flex:1;min-width:0}
+.rowLabel{font-size:12px;color:var(--muted);margin-bottom:2px}
+.rowValue{font-size:14px;font-weight:800;line-height:1.4;overflow-wrap:anywhere}
+.rowIcon{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:14px;background:color-mix(in srgb,var(--button) 12%,transparent)}
+
+.stage-list{list-style:none;padding:0;margin:20px 0}
+.stage-list li{padding:12px 0;font-size:14.5px;color:var(--muted);display:flex;align-items:center;gap:10px}
+.stage-list li.active{color:var(--text);font-weight:700}
+.stage-list li.done{color:var(--button)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.stage-list li.active .dot{background:var(--button);animation:pulse 1s infinite}
+.stage-list li.done .dot{background:var(--button)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+.warning{margin-top:14px;padding:14px;border-radius:15px;background:color-mix(in srgb,var(--warning) 12%,transparent);text-align:left;line-height:1.7;font-size:13.5px}
+.warning.danger-warning{background:color-mix(in srgb,var(--danger) 10%,transparent)}
+.warningTitle{font-weight:850;margin-bottom:2px}
+
+.footer{padding-top:14px;text-align:center;color:var(--muted);font-size:11px;display:flex;justify-content:space-between}
+
+.help-overlay{position:fixed;top:0;right:0;bottom:0;left:0;z-index:150;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;overflow:hidden;padding:18px}
+.help-overlay.hidden{display:none}
+.help-inner{position:relative;width:min(100%,440px);max-height:min(82vh,640px);max-height:min(82dvh,640px);background:var(--surface);border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,.35);display:flex;flex-direction:column;padding:16px 16px 14px;overflow:hidden}
+.help-header{flex:none;display:flex;align-items:center;padding:2px 44px 14px 2px}
+.help-close{position:absolute;top:12px;right:12px;width:36px;height:36px;min-height:0;margin:0;flex:none;border-radius:50%;background:color-mix(in srgb,var(--muted) 10%,transparent);color:var(--text);font-size:24px;font-weight:800;line-height:1;padding:0}
+.help-title{font-size:clamp(18px,5vw,21px);font-weight:850}
+.help-body{flex:1;min-height:0;overflow-y:auto}
+
+.faqItem{border-bottom:1px solid var(--border);padding:12px 0}
+.faqItem:last-child{border-bottom:0}
+.faqItem summary{cursor:pointer;font-weight:800;font-size:14.5px;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.faqItem summary::-webkit-details-marker{display:none}
+.faqItem summary:after{content:"+";flex:none;font-size:18px;font-weight:700;color:var(--muted)}
+.faqItem[open] summary:after{content:"\2212"}
+.faqAnswer{margin-top:8px;color:var(--muted);font-size:13.5px;line-height:1.75}
+
+.stage-progress{display:none;height:3px;margin:15px 2px 0;overflow:hidden;border-radius:99px;background:color-mix(in srgb,var(--muted) 14%,transparent)}
+.stage-progress.show{display:block}
+.stage-progress:after{content:"";display:block;width:35%;height:100%;background:var(--button);animation:progressAnim 1.05s ease-in-out infinite}
+@keyframes progressAnim{from{transform:translateX(-300%)}to{transform:translateX(300%)}}
+
+@media (max-height:700px){
+  .app{padding-top:max(8px,env(safe-area-inset-top));padding-bottom:max(12px,env(safe-area-inset-bottom))}
+  .header{padding:4px 2px 10px}
+  .main{padding-top:2px}
+  .centerScreen{padding:16px 18px}
+  .icon{width:50px;height:50px;margin:0 auto 10px;font-size:22px}
+  h2{font-size:18px}
+  .message{margin:6px 0 12px}
+  button{min-height:44px;margin-top:10px;padding:10px 14px;font-size:14.5px}
+  .tabContent{padding:12px 14px 14px}
+}
 </style>
 </head>
 <body>
+<main class="app">
+  <header class="header">
+    <div class="headerText">
+      <div class="business-name">Video Downloader</div>
+      <div id="welcome" class="user-name">Checking your account…</div>
+    </div>
+    <div class="header-actions">
+      <button id="helpFab" type="button" class="help-fab" aria-label="Help">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        <span>Help</span>
+      </button>
+    </div>
+  </header>
 
-<div id="screen-main" class="screen active">
-  <h2>New download</h2>
-  <label for="url-input">Video link</label>
-  <input type="text" id="url-input" placeholder="Paste a Facebook, Instagram, YouTube or X link">
+  <section class="main">
 
-  <label for="name-input">Save as</label>
-  <input type="text" id="name-input" placeholder="Video name">
+    <!-- Loading / status screen -->
+    <section id="screen-loading" class="screen active">
+      <div class="centerScreen">
+        <div id="loadingIcon" class="icon">⏳</div>
+        <h2 id="loadingTitle">One moment</h2>
+        <p id="loadingMsg" class="message">Checking your account…</p>
+        <button id="loadingRetryBtn" class="hidden">Try again</button>
+      </div>
+    </section>
 
-  <label>Destination folder</label>
-  <button class="folder-select placeholder" id="folder-select-btn" onclick="openFolderPicker()">Choose a folder</button>
+    <!-- Registration screen (first-time use) -->
+    <section id="screen-registration" class="screen">
+      <div class="centerScreen">
+        <div class="icon">👤</div>
+        <h2>Set up your account</h2>
+        <p class="message">Pick a username so we know who's downloading. You only need to do this once.</p>
+        <label for="reg-username-input">Username</label>
+        <input type="text" id="reg-username-input" placeholder="e.g. john_doe">
+        <div id="reg-error" class="error-text hidden"></div>
+        <button id="registerBtn" disabled>Save and continue</button>
+      </div>
+    </section>
 
-  <div id="main-error" class="error-text hidden"></div>
+    <!-- Main tabbed app -->
+    <section id="screen-app" class="screen">
+      <div class="tabs">
+        <button type="button" class="tab active" data-tab="download">Download</button>
+        <button type="button" class="tab" data-tab="settings">Settings</button>
+      </div>
+      <div class="tabContent">
 
-  <div class="btn-row">
-    <button class="btn-secondary" onclick="closeApp()">Cancel</button>
-    <button class="btn-primary" id="download-btn" onclick="submitDownload()">Download</button>
-  </div>
-</div>
+        <div id="tab-download" class="tabPane active">
+          <label for="url-input">Video link</label>
+          <input type="text" id="url-input" placeholder="Paste a Facebook, Instagram, YouTube or X link">
 
-<div id="screen-folder-picker" class="screen">
-  <button class="back-link" onclick="showScreen('screen-main')">‹ Back</button>
-  <h2>Choose a folder</h2>
-  <div class="folder-tree" id="folder-tree"></div>
-  <div class="btn-row">
-    <button class="btn-secondary" onclick="showScreen('screen-manage-folders'); loadManageFolders();">Manage folders</button>
-  </div>
-</div>
+          <label for="name-input">Save as</label>
+          <input type="text" id="name-input" placeholder="Video name">
 
-<div id="screen-manage-folders" class="screen">
-  <button class="back-link" onclick="showScreen('screen-main')">‹ Back</button>
-  <h2>Your root folders</h2>
-  <div class="folder-tree" id="manage-folder-list"></div>
+          <label>Destination folder</label>
+          <button type="button" class="folder-select placeholder" id="folder-select-btn">Choose a folder</button>
 
-  <div class="add-folder-box">
-    <label for="new-folder-link">Google Drive folder share link</label>
-    <input type="text" id="new-folder-link" placeholder="https://drive.google.com/drive/folders/...">
-    <label for="new-folder-label">Label</label>
-    <input type="text" id="new-folder-label" placeholder="e.g. Kids">
-    <div id="add-folder-error" class="error-text hidden"></div>
-    <div class="btn-row">
-      <button class="btn-primary" onclick="addNewFolder()">Add folder</button>
+          <div id="main-error" class="error-text hidden"></div>
+
+          <button id="download-btn" disabled>Download</button>
+        </div>
+
+        <div id="tab-settings" class="tabPane">
+          <label>Your folders</label>
+          <div class="folder-tree" id="manage-folder-list"></div>
+
+          <div class="add-folder-box">
+            <label for="new-folder-link">Google Drive folder share link</label>
+            <input type="text" id="new-folder-link" placeholder="https://drive.google.com/drive/folders/...">
+            <label for="new-folder-label">Label</label>
+            <input type="text" id="new-folder-label" placeholder="e.g. Kids">
+            <div id="add-folder-error" class="error-text hidden"></div>
+            <button id="add-folder-btn" disabled>Add folder</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </section>
+
+  <footer class="footer"><span id="footerStatus">Ready</span><span id="footerVersion">v1.0.0</span></footer>
+</main>
+
+<!-- Folder picker overlay -->
+<div id="folderPickerOverlay" class="help-overlay hidden">
+  <div class="help-inner">
+    <div class="help-header">
+      <button type="button" class="help-close" id="folderPickerCloseBtn" aria-label="Close">×</button>
+      <div class="help-title">Choose a folder</div>
+    </div>
+    <div class="help-body">
+      <div class="folder-tree" id="folder-tree"></div>
+      <button type="button" class="secondary" id="goToSettingsBtn">Manage folders</button>
     </div>
   </div>
 </div>
 
-<div id="screen-progress" class="screen">
-  <h2>Downloading</h2>
-  <ul class="stage-list" id="stage-list">
-    <li id="stage-downloading"><span class="dot"></span> Downloading</li>
-    <li id="stage-uploading"><span class="dot"></span> Uploading to Drive</li>
-    <li id="stage-finished"><span class="dot"></span> Done</li>
-  </ul>
-  <div id="progress-result" class="result-text hidden"></div>
-  <div class="btn-row">
-    <button class="btn-secondary" onclick="closeApp()">Close</button>
+<!-- Progress overlay -->
+<div id="progressOverlay" class="help-overlay hidden">
+  <div class="help-inner">
+    <div class="help-header">
+      <div class="help-title">Downloading</div>
+    </div>
+    <div class="help-body">
+      <ul class="stage-list" id="stage-list">
+        <li id="stage-downloading"><span class="dot"></span> Downloading</li>
+        <li id="stage-uploading"><span class="dot"></span> Uploading to Drive</li>
+        <li id="stage-finished"><span class="dot"></span> Done</li>
+      </ul>
+      <div id="progress-warning" class="warning hidden"><div class="warningTitle" id="progress-warning-title"></div><div id="progress-warning-msg"></div></div>
+      <button type="button" id="progressCloseBtn" class="secondary">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Help overlay -->
+<div id="helpOverlay" class="help-overlay hidden">
+  <div class="help-inner">
+    <div class="help-header">
+      <button type="button" class="help-close" id="helpCloseBtn" aria-label="Close">×</button>
+      <div class="help-title">Help</div>
+    </div>
+    <div class="help-body">
+      <div id="helpList"></div>
+    </div>
   </div>
 </div>
 
@@ -175,37 +266,33 @@
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyzgxLCW_zQQF8tME_n-DYtBjR-RgDUxOeXKBC3deaR25Vg5B4KRM5fI2F8B79HkJsG/exec';
 
 // ---- Telegram setup ----
-const tg = window.Telegram.WebApp;
-tg.ready();
-tg.expand();
+const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+if (tg) { tg.ready(); tg.expand(); }
 
-const initData = tg.initData || '';
-const chatId = tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
+const initData = tg ? (tg.initData || '') : '';
+const tgUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : null;
+const chatId = tgUser ? tgUser.id : null;
 
 let selectedFolder = null; // { label, driveFolderId }
 let pollTimer = null;
+let currentUsername = '';
 
-// ---- Init ----
-window.addEventListener('DOMContentLoaded', () => {
-  const params = new URLSearchParams(window.location.search);
-  const prefillUrl = params.get('url');
-  if (prefillUrl) document.getElementById('url-input').value = prefillUrl;
-});
-
+// ---- Screen helpers ----
 function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('#screen-loading, #screen-registration, #screen-app').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
-
+function setFooterStatus(text) { document.getElementById('footerStatus').textContent = text; }
 function showError(elementId, message) {
   const el = document.getElementById(elementId);
   el.textContent = message;
   el.classList.remove('hidden');
 }
-
 function clearError(elementId) {
   document.getElementById(elementId).classList.add('hidden');
 }
+function openOverlay(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeOverlay(id) { document.getElementById(id).classList.add('hidden'); }
 
 // ---- API helper ----
 async function callApi(action, params, method) {
@@ -222,25 +309,150 @@ async function callApi(action, params, method) {
   return res.json();
 }
 
-// ---- Folder picker ----
-function openFolderPicker() {
-  showScreen('screen-folder-picker');
-  loadFolderTree();
+// ---- Init ----
+window.addEventListener('DOMContentLoaded', init);
+
+async function init() {
+  const params = new URLSearchParams(window.location.search);
+  const prefillUrl = params.get('url');
+  if (prefillUrl) document.getElementById('url-input').value = prefillUrl;
+
+  if (!chatId) {
+    document.getElementById('loadingIcon').textContent = '⚠️';
+    document.getElementById('loadingTitle').textContent = 'Open from Telegram';
+    document.getElementById('loadingMsg').textContent = 'This app only works when opened from the Telegram bot.';
+    setFooterStatus('Not available');
+    return;
+  }
+
+  await checkRegistration();
 }
+
+async function checkRegistration() {
+  showScreen('screen-loading');
+  document.getElementById('loadingIcon').textContent = '⏳';
+  document.getElementById('loadingTitle').textContent = 'One moment';
+  document.getElementById('loadingMsg').textContent = 'Checking your account…';
+  document.getElementById('loadingRetryBtn').classList.add('hidden');
+  setFooterStatus('Checking…');
+
+  let result;
+  try {
+    result = await callApi('checkUser', { chatId });
+  } catch (e) {
+    return showLoadError('Could not reach the server. Check your connection and try again.');
+  }
+  if (result.error) return showLoadError(result.error);
+
+  if (result.registered) {
+    currentUsername = result.username;
+    document.getElementById('welcome').textContent = '@' + currentUsername;
+    setFooterStatus('Ready');
+    showScreen('screen-app');
+    loadFolderTree();
+  } else {
+    const prefill = (tgUser && tgUser.username) ? tgUser.username : '';
+    const input = document.getElementById('reg-username-input');
+    input.value = prefill;
+    updateRegisterEnabled();
+    setFooterStatus('Setup required');
+    showScreen('screen-registration');
+  }
+}
+
+function showLoadError(message) {
+  document.getElementById('loadingIcon').textContent = '⚠️';
+  document.getElementById('loadingTitle').textContent = 'Something went wrong';
+  document.getElementById('loadingMsg').textContent = message;
+  document.getElementById('loadingRetryBtn').classList.remove('hidden');
+  setFooterStatus('Error');
+}
+document.getElementById('loadingRetryBtn').onclick = checkRegistration;
+
+// ---- Registration ----
+function updateRegisterEnabled() {
+  const val = document.getElementById('reg-username-input').value.trim();
+  document.getElementById('registerBtn').disabled = val.length === 0;
+}
+document.getElementById('reg-username-input').addEventListener('input', updateRegisterEnabled);
+
+document.getElementById('registerBtn').onclick = async () => {
+  clearError('reg-error');
+  const username = document.getElementById('reg-username-input').value.trim();
+  if (!username) return;
+
+  const btn = document.getElementById('registerBtn');
+  btn.disabled = true;
+  try {
+    const result = await callApi('registerUser', { chatId, username }, 'POST');
+    if (result.error) {
+      showError('reg-error', result.error);
+      updateRegisterEnabled();
+      return;
+    }
+    currentUsername = result.username;
+    document.getElementById('welcome').textContent = '@' + currentUsername;
+    setFooterStatus('Ready');
+    showScreen('screen-app');
+    loadFolderTree();
+  } catch (e) {
+    showError('reg-error', 'Could not reach the server. Try again.');
+    updateRegisterEnabled();
+  }
+};
+
+// ---- Tabs ----
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('.tabPane').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'settings') loadManageFolders();
+  };
+});
+document.getElementById('goToSettingsBtn').onclick = () => {
+  closeOverlay('folderPickerOverlay');
+  document.querySelector('.tab[data-tab="settings"]').click();
+};
+
+// ---- Download form validation ----
+function updateDownloadEnabled() {
+  const url = document.getElementById('url-input').value.trim();
+  const name = document.getElementById('name-input').value.trim();
+  document.getElementById('download-btn').disabled = !(url && name && selectedFolder);
+}
+document.getElementById('url-input').addEventListener('input', updateDownloadEnabled);
+document.getElementById('name-input').addEventListener('input', updateDownloadEnabled);
+
+// ---- Folder picker (destination selection) ----
+document.getElementById('folder-select-btn').onclick = () => {
+  openOverlay('folderPickerOverlay');
+  loadFolderTree();
+};
+document.getElementById('folderPickerCloseBtn').onclick = () => closeOverlay('folderPickerOverlay');
 
 async function loadFolderTree() {
   const container = document.getElementById('folder-tree');
-  container.innerHTML = '<div class="folder-row"><span class="label">Loading…</span></div>';
-  const folders = await callApi('listRootFolders', { chatId });
+  container.innerHTML = '<div class="emptyNote">Loading…</div>';
+  let folders;
+  try {
+    folders = await callApi('listRootFolders', { chatId });
+  } catch (e) {
+    container.innerHTML = '<div class="emptyNote">Could not load folders.</div>';
+    return;
+  }
   container.innerHTML = '';
   if (!folders.length) {
-    container.innerHTML = '<div class="folder-row"><span class="label">No folders yet — add one below.</span></div>';
+    container.innerHTML = '<div class="emptyNote">No folders yet — add one from Settings.</div>';
     return;
   }
   folders.forEach(f => container.appendChild(buildFolderRow(f)));
 }
 
 function buildFolderRow(folder) {
+  const wrap = document.createElement('div');
+  wrap.className = 'folderRowWrap';
+
   const row = document.createElement('div');
   row.className = 'folder-row';
 
@@ -262,11 +474,14 @@ function buildFolderRow(folder) {
       arrow.textContent = '›';
       return;
     }
-    childrenBox.innerHTML = '<div class="folder-row"><span class="label">Loading…</span></div>';
-    const children = await callApi('listChildFolders', { chatId, parentId: folder.driveFolderId });
+    childrenBox.innerHTML = '<div class="emptyNote">Loading…</div>';
+    let children = [];
+    try {
+      children = await callApi('listChildFolders', { chatId, parentId: folder.driveFolderId });
+    } catch (e) { /* leave empty */ }
     childrenBox.innerHTML = '';
     if (!children.length) {
-      childrenBox.innerHTML = '<div class="folder-row"><span class="label">No subfolders</span></div>';
+      childrenBox.innerHTML = '<div class="emptyNote">No subfolders</div>';
     } else {
       children.forEach(c => childrenBox.appendChild(buildFolderRow(c)));
     }
@@ -276,11 +491,9 @@ function buildFolderRow(folder) {
 
   row.appendChild(arrow);
   row.appendChild(label);
-  row.appendChild(childrenBox);
-
-  const wrapper = document.createElement('div');
-  wrapper.appendChild(row);
-  return wrapper;
+  wrap.appendChild(row);
+  wrap.appendChild(childrenBox);
+  return wrap;
 }
 
 function chooseFolder(folder) {
@@ -288,31 +501,51 @@ function chooseFolder(folder) {
   const btn = document.getElementById('folder-select-btn');
   btn.textContent = folder.label;
   btn.classList.remove('placeholder');
-  showScreen('screen-main');
+  updateDownloadEnabled();
+  closeOverlay('folderPickerOverlay');
 }
 
-// ---- Manage folders ----
+// ---- Settings tab: manage folders ----
 async function loadManageFolders() {
   const container = document.getElementById('manage-folder-list');
-  container.innerHTML = '<div class="folder-row"><span class="label">Loading…</span></div>';
-  const folders = await callApi('listRootFolders', { chatId });
+  container.innerHTML = '<div class="emptyNote">Loading…</div>';
+  let folders;
+  try {
+    folders = await callApi('listRootFolders', { chatId });
+  } catch (e) {
+    container.innerHTML = '<div class="emptyNote">Could not load folders.</div>';
+    return;
+  }
   container.innerHTML = '';
   if (!folders.length) {
-    container.innerHTML = '<div class="folder-row"><span class="label">No root folders yet.</span></div>';
+    container.innerHTML = '<div class="emptyNote">No folders yet — add one below.</div>';
     return;
   }
   folders.forEach(f => {
+    const wrap = document.createElement('div');
+    wrap.className = 'folderRowWrap';
     const row = document.createElement('div');
     row.className = 'folder-row';
     row.innerHTML = `<span class="label">${f.label}</span><span class="remove">Remove</span>`;
     row.querySelector('.remove').onclick = () => removeExistingFolder(f);
-    container.appendChild(row);
+    wrap.appendChild(row);
+    container.appendChild(wrap);
   });
 }
 
 async function removeExistingFolder(folder) {
-  await callApi('removeFolder', { chatId, folderId: folder.driveFolderId }, 'POST');
+  try {
+    await callApi('removeFolder', { chatId, folderId: folder.driveFolderId }, 'POST');
+  } catch (e) { /* ignore, list refresh will show current state */ }
   loadManageFolders();
+  // clear a stale selection if it pointed at the removed folder
+  if (selectedFolder && selectedFolder.driveFolderId === folder.driveFolderId) {
+    selectedFolder = null;
+    const btn = document.getElementById('folder-select-btn');
+    btn.textContent = 'Choose a folder';
+    btn.classList.add('placeholder');
+    updateDownloadEnabled();
+  }
 }
 
 function extractFolderIdFromLink(link) {
@@ -320,16 +553,31 @@ function extractFolderIdFromLink(link) {
   return match ? match[1] : null;
 }
 
-async function addNewFolder() {
+function updateAddFolderEnabled() {
+  const link = document.getElementById('new-folder-link').value.trim();
+  const label = document.getElementById('new-folder-label').value.trim();
+  document.getElementById('add-folder-btn').disabled = !(extractFolderIdFromLink(link) && label);
+}
+document.getElementById('new-folder-link').addEventListener('input', updateAddFolderEnabled);
+document.getElementById('new-folder-label').addEventListener('input', updateAddFolderEnabled);
+
+document.getElementById('add-folder-btn').onclick = async () => {
   clearError('add-folder-error');
   const link = document.getElementById('new-folder-link').value.trim();
   const label = document.getElementById('new-folder-label').value.trim();
   const folderId = extractFolderIdFromLink(link);
+  if (!folderId || !label) return;
 
-  if (!folderId) return showError('add-folder-error', 'That doesn\'t look like a Drive folder link.');
-  if (!label) return showError('add-folder-error', 'Give the folder a label.');
-
-  const result = await callApi('addFolder', { chatId, folderId, label }, 'POST');
+  const btn = document.getElementById('add-folder-btn');
+  btn.disabled = true;
+  let result;
+  try {
+    result = await callApi('addFolder', { chatId, folderId, label }, 'POST');
+  } catch (e) {
+    showError('add-folder-error', 'Could not reach the server. Try again.');
+    updateAddFolderEnabled();
+    return;
+  }
 
   if (result.conflict) {
     const messages = {
@@ -337,46 +585,79 @@ async function addNewFolder() {
       already_inside: `This folder is already inside "${result.conflict.label}" — no need to add it separately.`,
       would_be_redundant: `"${result.conflict.label}" is a subfolder of this one. Consider removing that entry.`
     };
-    return showError('add-folder-error', messages[result.conflict.conflict] || 'This folder conflicts with an existing one.');
+    showError('add-folder-error', messages[result.conflict.conflict] || 'This folder conflicts with an existing one.');
+    updateAddFolderEnabled();
+    return;
+  }
+  if (result.error) {
+    showError('add-folder-error', result.error);
+    updateAddFolderEnabled();
+    return;
   }
 
   document.getElementById('new-folder-link').value = '';
   document.getElementById('new-folder-label').value = '';
+  updateAddFolderEnabled();
   loadManageFolders();
-}
+};
 
 // ---- Submit download ----
-async function submitDownload() {
+document.getElementById('download-btn').onclick = async () => {
   clearError('main-error');
   const url = document.getElementById('url-input').value.trim();
   const name = document.getElementById('name-input').value.trim();
+  if (!url || !name || !selectedFolder) return;
 
-  if (!url) return showError('main-error', 'Paste a video link first.');
-  if (!selectedFolder) return showError('main-error', 'Choose a destination folder.');
+  const btn = document.getElementById('download-btn');
+  btn.disabled = true;
 
-  document.getElementById('download-btn').disabled = true;
+  let result;
+  try {
+    result = await callApi('submitDownload', {
+      chatId, url, customName: name, destFolderId: selectedFolder.driveFolderId
+    }, 'POST');
+  } catch (e) {
+    showError('main-error', 'Could not reach the server. Try again.');
+    updateDownloadEnabled();
+    return;
+  }
 
-  const result = await callApi('submitDownload', {
-    chatId,
-    url,
-    customName: name,
-    destFolderId: selectedFolder.driveFolderId
-  }, 'POST');
+  if (result.error) {
+    showError('main-error', result.error);
+    updateDownloadEnabled();
+    return;
+  }
 
-  document.getElementById('download-btn').disabled = false;
-
-  if (result.error) return showError('main-error', result.error);
-
-  showScreen('screen-progress');
+  openOverlay('progressOverlay');
+  document.getElementById('progress-warning').classList.add('hidden');
+  ['stage-downloading', 'stage-uploading', 'stage-finished'].forEach(id => document.getElementById(id).classList.remove('active', 'done'));
+  document.getElementById('progressCloseBtn').textContent = 'Cancel';
   pollJobStatus(result.jobId);
-}
+};
+
+document.getElementById('progressCloseBtn').onclick = () => {
+  if (pollTimer) clearInterval(pollTimer);
+  closeOverlay('progressOverlay');
+  // reset form for the next download
+  document.getElementById('url-input').value = '';
+  document.getElementById('name-input').value = '';
+  selectedFolder = null;
+  const fbtn = document.getElementById('folder-select-btn');
+  fbtn.textContent = 'Choose a folder';
+  fbtn.classList.add('placeholder');
+  updateDownloadEnabled();
+  document.getElementById('download-btn').disabled = true;
+};
 
 // ---- Progress polling ----
 function pollJobStatus(jobId) {
   const stages = { downloading: 'stage-downloading', uploading: 'stage-uploading', finished: 'stage-finished' };
 
   pollTimer = setInterval(async () => {
-    const status = await callApi('getJobStatus', { jobId });
+    let status;
+    try {
+      status = await callApi('getJobStatus', { jobId });
+    } catch (e) { return; }
     if (!status || status.error) return;
 
     Object.values(stages).forEach(id => document.getElementById(id).classList.remove('active', 'done'));
@@ -390,24 +671,53 @@ function pollJobStatus(jobId) {
       document.getElementById(stages.downloading).classList.add('done');
       document.getElementById(stages.uploading).classList.add('done');
       document.getElementById(stages.finished).classList.add('done');
-      showResult(`Saved ${status.customName} (${status.sizeMb}MB).`);
+      showProgressResult(false, 'Done', `Saved ${status.customName} (${status.sizeMb}MB).`);
       clearInterval(pollTimer);
+      document.getElementById('progressCloseBtn').textContent = 'Close';
     } else if (status.status === 'failed') {
-      showResult(`Couldn't finish this download. ${status.errorMessage || ''}`);
+      showProgressResult(true, 'Download failed', status.errorMessage || 'Something went wrong with this download.');
       clearInterval(pollTimer);
+      document.getElementById('progressCloseBtn').textContent = 'Close';
     }
   }, 3000);
 }
 
-function showResult(text) {
-  const el = document.getElementById('progress-result');
-  el.textContent = text;
-  el.classList.remove('hidden');
+function showProgressResult(isError, title, msg) {
+  const box = document.getElementById('progress-warning');
+  box.classList.remove('hidden');
+  box.classList.toggle('danger-warning', isError);
+  document.getElementById('progress-warning-title').textContent = title;
+  document.getElementById('progress-warning-msg').textContent = msg;
 }
 
-function closeApp() {
-  tg.close();
+// ---- Help overlay ----
+const HELP_CONTENT = [
+  { q: 'How do I download a video?', a: 'Paste a Facebook, Instagram, YouTube or X (Twitter) link, give it a name, choose a destination folder, then tap Download. You can also start this from the Telegram bot by sharing a link directly.' },
+  { q: 'Why is the Download button greyed out?', a: 'All three fields — the link, the name, and the destination folder — need to be filled in before the button unlocks.' },
+  { q: 'How do I add a Drive folder?', a: 'Go to Settings, paste a Google Drive folder share link and give it a short label, then tap Add folder. It will then show up when choosing a destination.' },
+  { q: 'How do I remove a folder?', a: 'In Settings, tap Remove next to any folder in your list. This only removes it from this app — it does not delete the folder from Drive.' },
+  { q: 'What happens if I hit my quota?', a: 'Each account has a download quota that resets on a regular period. If you go over it, new downloads are blocked until the next period starts.' }
+];
+function renderHelpList() {
+  const list = document.getElementById('helpList');
+  list.innerHTML = '';
+  HELP_CONTENT.forEach((item, i) => {
+    const d = document.createElement('details');
+    d.className = 'faqItem';
+    if (i === 0) d.open = true;
+    const s = document.createElement('summary');
+    s.textContent = item.q;
+    const a = document.createElement('div');
+    a.className = 'faqAnswer';
+    a.textContent = item.a;
+    d.appendChild(s); d.appendChild(a);
+    list.appendChild(d);
+  });
 }
+document.getElementById('helpFab').onclick = () => { renderHelpList(); openOverlay('helpOverlay'); };
+document.getElementById('helpCloseBtn').onclick = () => closeOverlay('helpOverlay');
+document.getElementById('folderPickerOverlay').addEventListener('click', function(e){ if (e.target === this) closeOverlay('folderPickerOverlay'); });
+document.getElementById('helpOverlay').addEventListener('click', function(e){ if (e.target === this) closeOverlay('helpOverlay'); });
 </script>
 </body>
 </html>
