@@ -43,8 +43,15 @@ label,.formLabel{display:block;font-size:12px;color:var(--muted);margin:14px 0 5
 label:first-of-type,.formLabel:first-of-type{margin-top:0}
 input[type=text]{width:100%;padding:11px 13px;border-radius:11px;border:1px solid var(--border);background:var(--bg);color:var(--text);font:inherit;font-size:14.5px}
 input[type=text]:focus{outline:2px solid color-mix(in srgb,var(--button) 40%,transparent);outline-offset:1px}
-.folder-select{width:100%;text-align:left;padding:11px 13px;border-radius:11px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:14.5px;cursor:pointer}
-.folder-select.placeholder{color:var(--muted)}
+.folder-select{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;padding:14px 16px;border-radius:12px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:15px;font-weight:700;cursor:pointer}
+.folder-select.placeholder{color:var(--muted);font-weight:600}
+.folder-select-arrow{font-size:20px;font-weight:900;line-height:1;color:var(--button);flex-shrink:0}
+.lockedConfirmBtn{width:100%;margin-top:14px}
+.nameInputWrap{position:relative}
+.nameInputWrap input{width:100%;box-sizing:border-box;padding-right:38px}
+.editNameBtn{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:17px;line-height:1;cursor:pointer;padding:6px;border-radius:8px}
+.editNameBtn:active{background:var(--border)}
+.editNameBtn.hidden{display:none}
 
 button{width:100%;min-height:52px;margin-top:14px;padding:12px 16px;border:0;border-radius:15px;font:inherit;font-size:clamp(15px,4.2vw,16px);font-weight:800;color:var(--buttonText);background:var(--button);cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;gap:8px}
 button:disabled{opacity:.45;cursor:default}
@@ -216,10 +223,16 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
           <input type="text" id="url-input" placeholder="Paste a Facebook, Instagram, YouTube or X link">
 
           <label for="name-input">Save as</label>
-          <input type="text" id="name-input" placeholder="Video name">
+          <div class="nameInputWrap">
+            <input type="text" id="name-input" placeholder="Video name">
+            <button type="button" id="editNameBtn" class="editNameBtn hidden" aria-label="Edit name">✏️</button>
+          </div>
 
           <label>Destination folder</label>
-          <button type="button" class="folder-select placeholder" id="folder-select-btn">Choose a folder</button>
+          <button type="button" class="folder-select placeholder" id="folder-select-btn">
+            <span class="folder-select-label">Choose a folder</span>
+            <span class="folder-select-arrow" aria-hidden="true">▾</span>
+          </button>
 
           <div id="main-error" class="error-text hidden"></div>
 
@@ -252,7 +265,7 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
     </div>
     <div class="help-body">
       <div class="folder-tree" id="folder-tree"></div>
-      <button type="button" class="secondary" id="goToSettingsBtn">Manage folders</button>
+      <button type="button" id="folderPickerConfirmBtn" class="lockedConfirmBtn" disabled>🔒 Download here</button>
     </div>
   </div>
 </div>
@@ -333,7 +346,9 @@ const initData = tg ? (tg.initData || '') : '';
 const tgUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : null;
 const chatId = tgUser ? tgUser.id : null;
 
-let selectedFolder = null; // { label, driveFolderId }
+let selectedFolder = null; // { label, driveFolderId } — committed, shown on the main form
+let pendingFolder = null; // { label, driveFolderId } — radio-picked inside the overlay, not yet confirmed
+let autoFilledName = false; // true only while name-input's value is one WE set — cleared the instant the user types
 let pollTimer = null;
 let currentUsername = '';
 
@@ -415,7 +430,10 @@ window.addEventListener('DOMContentLoaded', init);
 async function init() {
   const params = new URLSearchParams(window.location.search);
   const prefillUrl = params.get('url');
-  if (prefillUrl) document.getElementById('url-input').value = prefillUrl;
+  if (prefillUrl) {
+    document.getElementById('url-input').value = prefillUrl;
+    scheduleTitleFetch();
+  }
 
   if (!chatId) {
     document.getElementById('loadingIcon').textContent = '⚠️';
@@ -543,22 +561,82 @@ document.querySelectorAll('.tab').forEach(btn => {
     }
   };
 });
-document.getElementById('goToSettingsBtn').onclick = () => {
-  closeOverlay('folderPickerOverlay');
-  document.querySelector('.tab[data-tab="settings"]').click();
-};
-
 // ---- Download form validation ----
 function updateDownloadEnabled() {
   const url = document.getElementById('url-input').value.trim();
   const name = document.getElementById('name-input').value.trim();
   document.getElementById('download-btn').disabled = !(url && name && selectedFolder);
 }
-document.getElementById('url-input').addEventListener('input', updateDownloadEnabled);
-document.getElementById('name-input').addEventListener('input', updateDownloadEnabled);
+document.getElementById('url-input').addEventListener('input', () => {
+  updateDownloadEnabled();
+  scheduleTitleFetch();
+});
+document.getElementById('name-input').addEventListener('input', () => {
+  autoFilledName = false; // user is typing their own name now — stop overwriting it
+  updateEditNameVisibility();
+  updateDownloadEnabled();
+});
+
+// Pencil icon appears only while the name field shows a name WE filled in —
+// it's the cue that "this was guessed, tap to change it". It disappears the
+// moment the user types, since at that point it's already their own name.
+function updateEditNameVisibility() {
+  const nameInput = document.getElementById('name-input');
+  document.getElementById('editNameBtn').classList.toggle('hidden', !(autoFilledName && nameInput.value.trim()));
+}
+document.getElementById('editNameBtn').onclick = () => {
+  const nameInput = document.getElementById('name-input');
+  nameInput.focus();
+  nameInput.select(); // whole guessed name is selected so typing straight away overwrites it
+};
+
+// ---- Auto-fill the "Save as" name from the pasted link ----
+// Only YouTube exposes a public, no-auth title lookup (oEmbed) that works
+// straight from the browser. Facebook/Instagram/X don't offer an equivalent
+// without app credentials or a login-backed scrape, so for those the field
+// stays manual for now — happy to wire those up too if there's already a
+// metadata/title lookup available from the n8n download pipeline.
+let titleFetchDebounce = null;
+let titleFetchSeq = 0;
+
+function scheduleTitleFetch() {
+  clearTimeout(titleFetchDebounce);
+  const url = document.getElementById('url-input').value.trim();
+  if (!/(?:youtube\.com|youtu\.be)/i.test(url)) return;
+  const seq = ++titleFetchSeq;
+  titleFetchDebounce = setTimeout(() => fetchYouTubeTitle(url, seq), 500);
+}
+
+async function fetchYouTubeTitle(url, seq) {
+  const nameInput = document.getElementById('name-input');
+  if (nameInput.value.trim() && !autoFilledName) return; // user already has their own name typed — don't touch it
+
+  let data;
+  try {
+    const res = await fetch('https://www.youtube.com/oembed?url=' + encodeURIComponent(url) + '&format=json');
+    if (!res.ok) return;
+    data = await res.json();
+  } catch (e) {
+    return; // no network / blocked — user can still type a name manually
+  }
+
+  if (seq !== titleFetchSeq) return; // superseded by a newer link before this resolved
+  if (!data || !data.title) return;
+  if (document.getElementById('url-input').value.trim() !== url) return;
+  if (nameInput.value.trim() && !autoFilledName) return;
+
+  nameInput.value = data.title;
+  autoFilledName = true;
+  updateEditNameVisibility();
+  updateDownloadEnabled();
+}
 
 // ---- Folder picker (destination selection) ----
 document.getElementById('folder-select-btn').onclick = () => {
+  pendingFolder = null;
+  const confirmBtn = document.getElementById('folderPickerConfirmBtn');
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = '🔒 Download here';
   openOverlay('folderPickerOverlay');
   loadFolderTree();
 };
@@ -600,14 +678,35 @@ function buildFolderRow(folder) {
   arrow.className = 'expand-arrow';
   arrow.textContent = '›';
 
+  // Shared radio group name across every row at every depth — including
+  // rows for subfolders added later via the expand arrow — so the browser
+  // itself enforces "only one folder selected, anywhere in the tree" with
+  // no extra bookkeeping needed here.
+  const radio = document.createElement('input');
+  radio.type = 'radio';
+  radio.name = 'folderPickRadio';
+  radio.className = 'folderRadio';
+  radio.value = folder.driveFolderId;
+  radio.disabled = locked;
+  if (selectedFolder && selectedFolder.driveFolderId === folder.driveFolderId) radio.checked = true;
+
   const label = document.createElement('span');
   label.className = 'label';
   label.textContent = folder.label;
   if (locked) {
     label.title = "This folder isn't shared with Editor access anymore — choose another folder, or fix sharing in Drive.";
-  } else {
-    label.onclick = () => chooseFolder(folder);
   }
+
+  const selectThisFolder = () => {
+    if (locked) return;
+    radio.checked = true;
+    pendingFolder = folder;
+    const confirmBtn = document.getElementById('folderPickerConfirmBtn');
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = 'Download here';
+  };
+  radio.onchange = selectThisFolder;
+  if (!locked) label.onclick = selectThisFolder;
 
   const childrenBox = document.createElement('div');
   childrenBox.className = 'children';
@@ -634,6 +733,7 @@ function buildFolderRow(folder) {
   };
 
   row.appendChild(arrow);
+  row.appendChild(radio);
   row.appendChild(label);
   if (locked) {
     const lock = document.createElement('span');
@@ -646,15 +746,15 @@ function buildFolderRow(folder) {
   return wrap;
 }
 
-function chooseFolder(folder) {
-  if (folder.writable === false) return; // locked folders can't be picked as a destination
-  selectedFolder = folder;
+document.getElementById('folderPickerConfirmBtn').onclick = () => {
+  if (!pendingFolder) return; // stays locked/disabled until a radio is picked, but guard anyway
+  selectedFolder = pendingFolder;
   const btn = document.getElementById('folder-select-btn');
-  btn.textContent = folder.label;
+  btn.querySelector('.folder-select-label').textContent = selectedFolder.label;
   btn.classList.remove('placeholder');
   updateDownloadEnabled();
   closeOverlay('folderPickerOverlay');
-}
+};
 
 // ---- Settings tab: manage folders ----
 async function loadManageFolders() {
@@ -793,7 +893,7 @@ document.getElementById('removeConfirmBtn').onclick = async () => {
   if (selectedFolder && selectedFolder.driveFolderId === folder.driveFolderId) {
     selectedFolder = null;
     const btn = document.getElementById('folder-select-btn');
-    btn.textContent = 'Choose a folder';
+    btn.querySelector('.folder-select-label').textContent = 'Choose a folder';
     btn.classList.add('placeholder');
     updateDownloadEnabled();
   }
@@ -995,9 +1095,11 @@ document.getElementById('progressCloseBtn').onclick = () => {
   // reset form for the next download
   document.getElementById('url-input').value = '';
   document.getElementById('name-input').value = '';
+  autoFilledName = false;
+  updateEditNameVisibility();
   selectedFolder = null;
   const fbtn = document.getElementById('folder-select-btn');
-  fbtn.textContent = 'Choose a folder';
+  fbtn.querySelector('.folder-select-label').textContent = 'Choose a folder';
   fbtn.classList.add('placeholder');
   updateDownloadEnabled();
   document.getElementById('download-btn').disabled = true;
