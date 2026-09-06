@@ -497,12 +497,40 @@ document.getElementById('retryUsernameBtn').onclick = () => {
 };
 
 // ---- Tabs ----
+// Settings tab: near-live subfolder counts while it's the visible tab. This
+// is cheap because getChildFolderCount_ on the backend is no longer cached
+// (just one Drive listing call), and this loop only runs client-side while
+// the user actually has the app open and Settings selected — there's no
+// server-side polling or cost incurred when nobody's looking at this tab.
+let manageFoldersRefreshTimer = null;
+const MANAGE_FOLDERS_REFRESH_MS = 8000;
+
+function startManageFoldersRefresh() {
+  stopManageFoldersRefresh();
+  manageFoldersRefreshTimer = setInterval(() => {
+    if (document.hidden) return; // app backgrounded — skip this tick, no need to spend a call
+    loadManageFolders();
+  }, MANAGE_FOLDERS_REFRESH_MS);
+}
+
+function stopManageFoldersRefresh() {
+  if (manageFoldersRefreshTimer) {
+    clearInterval(manageFoldersRefreshTimer);
+    manageFoldersRefreshTimer = null;
+  }
+}
+
 document.querySelectorAll('.tab').forEach(btn => {
   btn.onclick = () => {
     document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b === btn));
     document.querySelectorAll('.tabPane').forEach(p => p.classList.remove('active'));
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-    if (btn.dataset.tab === 'settings') loadManageFolders();
+    if (btn.dataset.tab === 'settings') {
+      loadManageFolders();
+      startManageFoldersRefresh();
+    } else {
+      stopManageFoldersRefresh();
+    }
   };
 });
 document.getElementById('goToSettingsBtn').onclick = () => {
