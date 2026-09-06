@@ -87,6 +87,8 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .iconBtn:active{transform:scale(.9)}
 
 .folderPreview{margin-top:10px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--muted) 8%,transparent);font-size:13.5px}
+.folderPreview.warn{background:color-mix(in srgb,var(--danger) 12%,transparent)}
+.folderPreview.warn .folderPreviewWarn{margin-top:0;color:var(--danger)}
 .folderPreviewName{font-weight:800;overflow-wrap:anywhere}
 .folderPreviewSub{color:var(--muted);font-size:12px;margin-top:2px}
 .folderPreviewWarn{color:var(--warning);font-size:12px;margin-top:4px;font-weight:700}
@@ -785,7 +787,16 @@ function escapeHtml(s) {
 
 function updateAddFolderEnabled() {
   const link = document.getElementById('new-folder-link').value.trim();
-  document.getElementById('add-folder-btn').disabled = !extractFolderIdFromLink(link);
+  document.getElementById('add-folder-btn').disabled = !extractFolderIdFromLink(link) || previewConflictActive;
+}
+
+function conflictMessage(conflict) {
+  const messages = {
+    exact: `Already mapped as "${conflict.label}".`,
+    already_inside: `This folder is already a subfolder of "${conflict.label}" — no need to add it separately.`,
+    would_be_redundant: `"${conflict.label}" is a subfolder of this one. Consider removing that entry.`
+  };
+  return messages[conflict.conflict] || 'This folder conflicts with an existing one.';
 }
 
 // ---- Add folder modal ----
@@ -812,14 +823,17 @@ document.getElementById('addFolderOverlay').addEventListener('click', function (
   if (e.target === this) closeAddFolderModal();
 });
 
-// ---- Live folder preview (name + subfolder count) while typing the link ----
+// ---- Live folder preview (name + subfolder count, or a conflict warning) while typing the link ----
 let previewDebounceTimer = null;
 let previewSeq = 0;
+let previewConflictActive = false;
 
 function resetFolderPreview() {
   clearTimeout(previewDebounceTimer);
   previewSeq++;
+  previewConflictActive = false;
   const box = document.getElementById('folder-preview');
+  box.classList.remove('warn');
   box.classList.add('hidden');
   box.innerHTML = '';
 }
@@ -832,12 +846,14 @@ function schedulePreview() {
 
   if (!folderId) {
     previewSeq++;
+    previewConflictActive = false;
+    box.classList.remove('warn');
     box.classList.add('hidden');
     box.innerHTML = '';
     return;
   }
 
-  box.classList.remove('hidden');
+  box.classList.remove('warn', 'hidden');
   box.innerHTML = loadingRowHtml('Checking folder…');
 
   const seq = ++previewSeq;
@@ -851,6 +867,17 @@ function schedulePreview() {
       return;
     }
     if (seq !== previewSeq) return; // superseded by a newer link
+
+    if (result && result.conflict) {
+      previewConflictActive = true;
+      box.classList.add('warn');
+      box.innerHTML = '<div class="folderPreviewWarn">⚠️ ' + escapeHtml(conflictMessage(result.conflict)) + '</div>';
+      updateAddFolderEnabled();
+      return;
+    }
+    previewConflictActive = false;
+    updateAddFolderEnabled();
+
     if (!result || result.error) {
       box.innerHTML = '<div class="emptyNote">' + escapeHtml((result && result.error) || 'Could not check that folder.') + '</div>';
       return;
@@ -871,7 +898,7 @@ document.getElementById('add-folder-btn').onclick = async () => {
   clearError('add-folder-error');
   const link = document.getElementById('new-folder-link').value.trim();
   const folderId = extractFolderIdFromLink(link);
-  if (!folderId) return;
+  if (!folderId || previewConflictActive) return;
 
   const btn = document.getElementById('add-folder-btn');
   setButtonLoading(btn, true, 'Adding folder…');
@@ -886,13 +913,8 @@ document.getElementById('add-folder-btn').onclick = async () => {
   }
 
   if (result.conflict) {
-    const messages = {
-      exact: `Already mapped as "${result.conflict.label}".`,
-      already_inside: `This folder is already inside "${result.conflict.label}" — no need to add it separately.`,
-      would_be_redundant: `"${result.conflict.label}" is a subfolder of this one. Consider removing that entry.`
-    };
     setButtonLoading(btn, false);
-    showError('add-folder-error', messages[result.conflict.conflict] || 'This folder conflicts with an existing one.');
+    showError('add-folder-error', conflictMessage(result.conflict));
     updateAddFolderEnabled();
     return;
   }
