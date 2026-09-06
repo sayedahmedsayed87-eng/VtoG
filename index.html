@@ -67,16 +67,29 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .folder-row{display:flex;align-items:center;gap:8px;padding:10px 0;cursor:pointer}
 .folder-row .expand-arrow{width:22px;color:var(--muted);font-size:12px;flex:none}
 .folder-row .label{flex:1;font-size:14.5px;min-width:0;overflow-wrap:anywhere}
-.folder-row .remove{flex:none;color:var(--danger);font-size:13px;font-weight:700;padding:4px 6px}
-.folder-row .remove-emoji{flex:none;font-size:18px;line-height:1;padding:4px 6px;cursor:pointer;user-select:none;background:none;border:0}
-.folder-row .remove-emoji:active{transform:scale(.88)}
 .folder-row.locked .label{color:var(--muted);cursor:default}
 .lockBadge{flex:none;color:var(--warning);font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:99px;background:color-mix(in srgb,var(--warning) 14%,transparent);white-space:nowrap}
 .children{padding-left:20px;display:none}
 .children.open{display:block}
 .emptyNote{color:var(--muted);font-size:13.5px;padding:14px 2px;text-align:center}
 
-.add-folder-box{margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}
+.settingsHeader{display:flex;justify-content:flex-start;margin-bottom:12px}
+.addFolderFab{width:auto;min-height:0;margin:0;padding:9px 14px 9px 12px;border-radius:99px;display:inline-flex;align-items:center;gap:7px;background:var(--surface);color:var(--button);border:1px solid var(--border);box-shadow:0 6px 18px rgba(0,0,0,.10);font-size:13.5px;font-weight:800;white-space:nowrap}
+.addFolderFab:active{transform:scale(.95)}
+
+.manageFolderCard{display:flex;align-items:center;gap:10px;background:color-mix(in srgb,var(--muted) 6%,var(--surface));border:1px solid var(--border);border-radius:14px;padding:9px 10px 9px 13px;margin:8px 0}
+.manageFolderInfo{flex:1;min-width:0}
+.manageFolderName{font-size:16px;font-weight:850;line-height:1.3;overflow-wrap:anywhere}
+.manageFolderCard.locked .manageFolderName{color:var(--muted)}
+.manageFolderSub{font-size:11.5px;color:var(--muted);margin-top:2px}
+.manageFolderActions{flex:none;display:flex;gap:6px}
+.iconBtn{width:32px;height:32px;min-height:0;margin:0;padding:0;border-radius:10px;border:0;display:grid;place-items:center;font-size:15px;line-height:1;color:var(--text);background:color-mix(in srgb,var(--muted) 13%,transparent);cursor:pointer}
+.iconBtn:active{transform:scale(.9)}
+
+.folderPreview{margin-top:10px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--muted) 8%,transparent);font-size:13.5px}
+.folderPreviewName{font-weight:800;overflow-wrap:anywhere}
+.folderPreviewSub{color:var(--muted);font-size:12px;margin-top:2px}
+.folderPreviewWarn{color:var(--warning);font-size:12px;margin-top:4px;font-weight:700}
 
 .card{background:color-mix(in srgb,var(--muted) 6%,var(--surface));border:1px solid var(--border);border-radius:16px;padding:2px 16px;margin:2px 0 4px}
 .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid var(--border)}
@@ -212,15 +225,12 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
         </div>
 
         <div id="tab-settings" class="tabPane">
-          <label>Your folders</label>
-          <div class="folder-tree" id="manage-folder-list"></div>
-
-          <div class="add-folder-box">
-            <label for="new-folder-link">Google Drive folder share link</label>
-            <input type="text" id="new-folder-link" placeholder="https://drive.google.com/drive/folders/...">
-            <div id="add-folder-error" class="error-text hidden"></div>
-            <button id="add-folder-btn" disabled>Add folder</button>
+          <div class="settingsHeader">
+            <button type="button" id="openAddFolderBtn" class="addFolderFab" aria-label="Add folder">
+              <span>➕</span><span>Add folder</span>
+            </button>
           </div>
+          <div class="folder-tree" id="manage-folder-list"></div>
         </div>
 
       </div>
@@ -259,6 +269,26 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
       </ul>
       <div id="progress-warning" class="warning hidden"><div class="warningTitle" id="progress-warning-title"></div><div id="progress-warning-msg"></div></div>
       <button type="button" id="progressCloseBtn" class="secondary">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add folder overlay -->
+<div id="addFolderOverlay" class="help-overlay hidden">
+  <div class="help-inner">
+    <div class="help-header">
+      <button type="button" class="help-close" id="addFolderCloseBtn" aria-label="Close">×</button>
+      <div class="help-title">Add a folder</div>
+    </div>
+    <div class="help-body">
+      <label for="new-folder-link">Google Drive folder share link</label>
+      <input type="text" id="new-folder-link" placeholder="https://drive.google.com/drive/folders/...">
+      <div id="folder-preview" class="folderPreview hidden"></div>
+      <div id="add-folder-error" class="error-text hidden"></div>
+      <div class="confirmButtons">
+        <button type="button" id="addFolderCancelBtn">Cancel</button>
+        <button type="button" id="add-folder-btn" disabled>Add folder</button>
+      </div>
     </div>
   </div>
 </div>
@@ -596,39 +626,72 @@ async function loadManageFolders() {
   }
   container.innerHTML = '';
   if (!folders.length) {
-    container.innerHTML = '<div class="emptyNote">No folders yet — add one below.</div>';
+    container.innerHTML = '<div class="emptyNote">No folders yet — tap "Add folder" above.</div>';
     return;
   }
-  folders.forEach(f => {
-    const wrap = document.createElement('div');
-    wrap.className = 'folderRowWrap';
-    const row = document.createElement('div');
-    row.className = 'folder-row' + (f.writable === false ? ' locked' : '');
+  folders.forEach(f => container.appendChild(buildManageFolderCard(f)));
+}
 
-    const label = document.createElement('span');
-    label.className = 'label';
-    label.textContent = f.label;
-    row.appendChild(label);
+function buildManageFolderCard(folder) {
+  const locked = folder.writable === false;
 
-    if (f.writable === false) {
-      const lock = document.createElement('span');
-      lock.className = 'lockBadge';
-      lock.textContent = '🔒 Locked';
-      lock.title = "This folder isn't shared with Editor access anymore.";
-      row.appendChild(lock);
-    }
+  const card = document.createElement('div');
+  card.className = 'manageFolderCard' + (locked ? ' locked' : '');
 
-    const remove = document.createElement('span');
-    remove.className = 'remove-emoji';
-    remove.textContent = '🗑️';
-    remove.setAttribute('role', 'button');
-    remove.setAttribute('aria-label', 'Remove ' + f.label);
-    remove.onclick = () => openRemoveConfirm(f);
-    row.appendChild(remove);
+  const info = document.createElement('div');
+  info.className = 'manageFolderInfo';
 
-    wrap.appendChild(row);
-    container.appendChild(wrap);
-  });
+  const name = document.createElement('div');
+  name.className = 'manageFolderName';
+  name.textContent = folder.label;
+  info.appendChild(name);
+
+  const count = folder.childCount || 0;
+  const sub = document.createElement('div');
+  sub.className = 'manageFolderSub';
+  sub.textContent = count + (count === 1 ? ' subfolder' : ' subfolders');
+  info.appendChild(sub);
+
+  card.appendChild(info);
+
+  if (locked) {
+    const lock = document.createElement('span');
+    lock.className = 'lockBadge';
+    lock.textContent = '🔒 Locked';
+    lock.title = "This folder isn't shared with Editor access anymore.";
+    card.appendChild(lock);
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'manageFolderActions';
+
+  const openBtn = document.createElement('button');
+  openBtn.type = 'button';
+  openBtn.className = 'iconBtn';
+  openBtn.textContent = '🔗';
+  openBtn.setAttribute('aria-label', 'Open ' + folder.label + ' in Drive');
+  openBtn.onclick = () => openInDrive(folder.driveFolderId);
+  actions.appendChild(openBtn);
+
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'iconBtn';
+  removeBtn.textContent = '🗑️';
+  removeBtn.setAttribute('aria-label', 'Remove ' + folder.label);
+  removeBtn.onclick = () => openRemoveConfirm(folder);
+  actions.appendChild(removeBtn);
+
+  card.appendChild(actions);
+  return card;
+}
+
+function openInDrive(folderId) {
+  const url = 'https://drive.google.com/drive/folders/' + folderId;
+  if (tg && typeof tg.openLink === 'function') {
+    tg.openLink(url);
+  } else {
+    window.open(url, '_blank', 'noopener');
+  }
 }
 
 // ---- Remove folder confirmation ----
@@ -683,11 +746,93 @@ function extractFolderIdFromLink(link) {
   return match ? match[1] : null;
 }
 
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 function updateAddFolderEnabled() {
   const link = document.getElementById('new-folder-link').value.trim();
   document.getElementById('add-folder-btn').disabled = !extractFolderIdFromLink(link);
 }
-document.getElementById('new-folder-link').addEventListener('input', updateAddFolderEnabled);
+
+// ---- Add folder modal ----
+document.getElementById('openAddFolderBtn').onclick = () => {
+  resetAddFolderModal();
+  openOverlay('addFolderOverlay');
+  document.getElementById('new-folder-link').focus();
+};
+
+function resetAddFolderModal() {
+  document.getElementById('new-folder-link').value = '';
+  clearError('add-folder-error');
+  resetFolderPreview();
+  updateAddFolderEnabled();
+}
+
+function closeAddFolderModal() {
+  closeOverlay('addFolderOverlay');
+  resetAddFolderModal();
+}
+document.getElementById('addFolderCloseBtn').onclick = closeAddFolderModal;
+document.getElementById('addFolderCancelBtn').onclick = closeAddFolderModal;
+document.getElementById('addFolderOverlay').addEventListener('click', function (e) {
+  if (e.target === this) closeAddFolderModal();
+});
+
+// ---- Live folder preview (name + subfolder count) while typing the link ----
+let previewDebounceTimer = null;
+let previewSeq = 0;
+
+function resetFolderPreview() {
+  clearTimeout(previewDebounceTimer);
+  previewSeq++;
+  const box = document.getElementById('folder-preview');
+  box.classList.add('hidden');
+  box.innerHTML = '';
+}
+
+function schedulePreview() {
+  clearTimeout(previewDebounceTimer);
+  const link = document.getElementById('new-folder-link').value.trim();
+  const folderId = extractFolderIdFromLink(link);
+  const box = document.getElementById('folder-preview');
+
+  if (!folderId) {
+    previewSeq++;
+    box.classList.add('hidden');
+    box.innerHTML = '';
+    return;
+  }
+
+  box.classList.remove('hidden');
+  box.innerHTML = loadingRowHtml('Checking folder…');
+
+  const seq = ++previewSeq;
+  previewDebounceTimer = setTimeout(async () => {
+    let result;
+    try {
+      result = await callApi('previewFolder', { chatId, folderId });
+    } catch (e) {
+      if (seq !== previewSeq) return;
+      box.innerHTML = '<div class="emptyNote">Could not check that folder.</div>';
+      return;
+    }
+    if (seq !== previewSeq) return; // superseded by a newer link
+    if (!result || result.error) {
+      box.innerHTML = '<div class="emptyNote">' + escapeHtml((result && result.error) || 'Could not check that folder.') + '</div>';
+      return;
+    }
+    const count = result.subfolderCount || 0;
+    box.innerHTML =
+      '<div class="folderPreviewName">' + escapeHtml(result.label) + '</div>' +
+      '<div class="folderPreviewSub">' + count + (count === 1 ? ' subfolder' : ' subfolders') + '</div>' +
+      (result.writable === false ? '<div class="folderPreviewWarn">⚠️ Not shared with Editor access yet</div>' : '');
+  }, 450);
+}
+document.getElementById('new-folder-link').addEventListener('input', () => {
+  updateAddFolderEnabled();
+  schedulePreview();
+});
 
 document.getElementById('add-folder-btn').onclick = async () => {
   clearError('add-folder-error');
@@ -726,8 +871,8 @@ document.getElementById('add-folder-btn').onclick = async () => {
   }
 
   setButtonLoading(btn, false);
-  document.getElementById('new-folder-link').value = '';
-  updateAddFolderEnabled();
+  closeOverlay('addFolderOverlay');
+  resetAddFolderModal();
   loadManageFolders();
 };
 
