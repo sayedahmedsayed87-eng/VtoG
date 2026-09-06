@@ -509,7 +509,7 @@ function startManageFoldersRefresh() {
   stopManageFoldersRefresh();
   manageFoldersRefreshTimer = setInterval(() => {
     if (document.hidden) return; // app backgrounded — skip this tick, no need to spend a call
-    loadManageFolders({ silent: true });
+    loadManageFolders();
   }, MANAGE_FOLDERS_REFRESH_MS);
 }
 
@@ -642,17 +642,20 @@ function chooseFolder(folder) {
 }
 
 // ---- Settings tab: manage folders ----
-async function loadManageFolders(opts) {
-  const silent = !!(opts && opts.silent);
+async function loadManageFolders() {
   const container = document.getElementById('manage-folder-list');
-  if (!silent) container.innerHTML = loadingRowHtml('Loading folders…');
+  // Only show the spinner when there's genuinely nothing on screen yet —
+  // a background refresh, a re-entry into this tab, or a refresh right
+  // after add/remove should update the list in place without flashing it.
+  const hasContent = container.children.length > 0;
+  if (!hasContent) container.innerHTML = loadingRowHtml('Loading folders…');
 
   let folders;
   try {
     folders = await callApi('listRootFolders', { chatId });
   } catch (e) {
-    if (!silent) container.innerHTML = '<div class="emptyNote">Could not load folders.</div>';
-    return; // a silent refresh that fails just leaves the last good list on screen
+    if (!hasContent) container.innerHTML = '<div class="emptyNote">Could not load folders.</div>';
+    return; // a refresh that fails while something's already on screen just leaves it as-is
   }
 
   container.innerHTML = '';
@@ -761,7 +764,7 @@ document.getElementById('removeConfirmBtn').onclick = async () => {
   pendingRemoveFolder = null;
   closeOverlay('removeConfirmOverlay');
 
-  loadManageFolders({ silent: true });
+  loadManageFolders();
   if (selectedFolder && selectedFolder.driveFolderId === folder.driveFolderId) {
     selectedFolder = null;
     const btn = document.getElementById('folder-select-btn');
@@ -903,7 +906,7 @@ document.getElementById('add-folder-btn').onclick = async () => {
   setButtonLoading(btn, false);
   closeOverlay('addFolderOverlay');
   resetAddFolderModal();
-  loadManageFolders({ silent: true });
+  loadManageFolders();
 };
 document.getElementById('download-btn').onclick = async () => {
   clearError('main-error');
