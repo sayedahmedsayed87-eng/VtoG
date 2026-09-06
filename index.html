@@ -509,7 +509,7 @@ function startManageFoldersRefresh() {
   stopManageFoldersRefresh();
   manageFoldersRefreshTimer = setInterval(() => {
     if (document.hidden) return; // app backgrounded — skip this tick, no need to spend a call
-    loadManageFolders();
+    loadManageFolders({ silent: true });
   }, MANAGE_FOLDERS_REFRESH_MS);
 }
 
@@ -642,16 +642,19 @@ function chooseFolder(folder) {
 }
 
 // ---- Settings tab: manage folders ----
-async function loadManageFolders() {
+async function loadManageFolders(opts) {
+  const silent = !!(opts && opts.silent);
   const container = document.getElementById('manage-folder-list');
-  container.innerHTML = loadingRowHtml('Loading folders…');
+  if (!silent) container.innerHTML = loadingRowHtml('Loading folders…');
+
   let folders;
   try {
     folders = await callApi('listRootFolders', { chatId });
   } catch (e) {
-    container.innerHTML = '<div class="emptyNote">Could not load folders.</div>';
-    return;
+    if (!silent) container.innerHTML = '<div class="emptyNote">Could not load folders.</div>';
+    return; // a silent refresh that fails just leaves the last good list on screen
   }
+
   container.innerHTML = '';
   if (!folders.length) {
     container.innerHTML = '<div class="emptyNote">No folders yet — tap "Add folder" above.</div>';
@@ -758,8 +761,7 @@ document.getElementById('removeConfirmBtn').onclick = async () => {
   pendingRemoveFolder = null;
   closeOverlay('removeConfirmOverlay');
 
-  loadManageFolders();
-  // clear a stale selection if it pointed at the removed folder
+  loadManageFolders({ silent: true });
   if (selectedFolder && selectedFolder.driveFolderId === folder.driveFolderId) {
     selectedFolder = null;
     const btn = document.getElementById('folder-select-btn');
@@ -901,10 +903,8 @@ document.getElementById('add-folder-btn').onclick = async () => {
   setButtonLoading(btn, false);
   closeOverlay('addFolderOverlay');
   resetAddFolderModal();
-  loadManageFolders();
+  loadManageFolders({ silent: true });
 };
-
-// ---- Submit download ----
 document.getElementById('download-btn').onclick = async () => {
   clearError('main-error');
   const url = document.getElementById('url-input').value.trim();
