@@ -43,16 +43,22 @@ label,.formLabel{display:block;font-size:12px;color:var(--muted);margin:14px 0 5
 label:first-of-type,.formLabel:first-of-type{margin-top:0}
 input[type=text]{width:100%;padding:11px 13px;border-radius:11px;border:1px solid var(--border);background:var(--bg);color:var(--text);font:inherit;font-size:14.5px}
 input[type=text]:focus{outline:2px solid color-mix(in srgb,var(--button) 40%,transparent);outline-offset:1px}
-.folder-select{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;padding:16px 16px 16px 18px;min-height:56px;box-sizing:border-box;border-radius:14px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:16px;font-weight:800;cursor:pointer}
+.folder-select{width:100%;display:flex;align-items:center;text-align:left;padding:16px 16px 16px 18px;min-height:56px;box-sizing:border-box;border-radius:14px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:16px;font-weight:800;cursor:pointer}
 .folder-select.placeholder{color:var(--muted);font-weight:600}
 .folder-select-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.folder-select-arrow{font-size:22px;font-weight:900;line-height:1;color:#fff;background:var(--button);width:36px;height:36px;min-width:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .lockedConfirmBtn{width:100%;margin-top:14px}
 .nameInputWrap{position:relative}
-.nameInputWrap input{width:100%;box-sizing:border-box;padding-right:38px}
-.editNameBtn{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:17px;line-height:1;cursor:pointer;padding:6px;border-radius:8px}
+.nameInputWrap input{width:100%;box-sizing:border-box;padding-right:64px}
+.editNameBtn{position:absolute;right:34px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:17px;line-height:1;cursor:pointer;padding:6px;border-radius:8px}
 .editNameBtn:active{background:var(--border)}
 .editNameBtn.hidden{display:none}
+.clearableInputWrap{position:relative}
+.clearableInputWrap input{width:100%;box-sizing:border-box;padding-right:38px}
+.clearFieldBtn{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:26px;height:26px;min-height:0;margin:0;padding:0;border:none;border-radius:50%;background:color-mix(in srgb,var(--muted) 16%,transparent);color:var(--text);font-size:13px;font-weight:900;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.clearFieldBtn:active{background:color-mix(in srgb,var(--muted) 28%,transparent)}
+.clearFieldBtn.hidden{display:none}
+.pathPreview{flex:none;font-size:13px;font-weight:700;color:var(--text);background:color-mix(in srgb,var(--button) 10%,transparent);border-radius:10px;padding:9px 12px;margin-bottom:12px;overflow-wrap:anywhere}
+.pathPreview.placeholder{font-weight:600;font-style:italic;color:var(--muted);background:color-mix(in srgb,var(--muted) 8%,transparent)}
 
 button{width:100%;min-height:52px;margin-top:14px;padding:12px 16px;border:0;border-radius:15px;font:inherit;font-size:clamp(15px,4.2vw,16px);font-weight:800;color:var(--buttonText);background:var(--button);cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;gap:8px}
 button:disabled{opacity:.45;cursor:default}
@@ -72,7 +78,9 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 
 .folder-tree{max-height:340px;overflow-y:auto}
 .folderRowWrap{background:color-mix(in srgb,var(--muted) 6%,var(--surface));border:1px solid var(--border);border-radius:14px;padding:4px 12px;margin:8px 0}
-.folder-row{display:flex;align-items:center;gap:8px;padding:10px 0;cursor:pointer}
+.folder-row{display:flex;align-items:center;gap:8px;padding:10px 8px;cursor:pointer;border-radius:10px}
+.folder-row.selected{background:color-mix(in srgb,var(--button) 16%,transparent)}
+.folder-row.selected .label{font-weight:800;color:var(--button)}
 .folder-row .expand-arrow{width:22px;color:var(--muted);font-size:12px;flex:none}
 .folder-row .label{flex:1;font-size:14.5px;min-width:0;overflow-wrap:anywhere}
 .folder-row.locked .label{color:var(--muted);cursor:default}
@@ -221,18 +229,21 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 
         <div id="tab-download" class="tabPane active">
           <label for="url-input">Video link</label>
-          <input type="text" id="url-input" placeholder="Paste a Facebook, Instagram, YouTube or X link">
+          <div class="clearableInputWrap">
+            <input type="text" id="url-input" placeholder="Paste a Facebook, Instagram, YouTube or X link">
+            <button type="button" id="clearUrlBtn" class="clearFieldBtn hidden" aria-label="Clear video link">✕</button>
+          </div>
 
           <label for="name-input">Save as</label>
           <div class="nameInputWrap">
             <input type="text" id="name-input" placeholder="Video name">
             <button type="button" id="editNameBtn" class="editNameBtn hidden" aria-label="Edit name">✏️</button>
+            <button type="button" id="clearNameBtn" class="clearFieldBtn hidden" aria-label="Clear name">✕</button>
           </div>
 
           <label>Destination folder</label>
           <button type="button" class="folder-select placeholder" id="folder-select-btn">
             <span class="folder-select-label">Choose a folder</span>
-            <span class="folder-select-arrow" aria-hidden="true">▾</span>
           </button>
 
           <div id="main-error" class="error-text hidden"></div>
@@ -264,9 +275,10 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
       <button type="button" class="help-close" id="folderPickerCloseBtn" aria-label="Close">×</button>
       <div class="help-title">Choose a folder</div>
     </div>
+    <div id="folderPathPreview" class="pathPreview placeholder">No folder selected yet</div>
     <div class="help-body">
       <div class="folder-tree" id="folder-tree"></div>
-      <button type="button" id="folderPickerConfirmBtn" class="lockedConfirmBtn" disabled>🔒 Download here</button>
+      <button type="button" id="folderPickerConfirmBtn" class="lockedConfirmBtn" disabled>Download here</button>
     </div>
   </div>
 </div>
@@ -298,8 +310,10 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
     </div>
     <div class="help-body">
       <label for="new-folder-link">Google Drive folder share link</label>
-      <input type="text" id="new-folder-link" placeholder="https://drive.google.com/drive/folders/...">
-      <div id="folder-preview" class="folderPreview hidden"></div>
+      <div class="clearableInputWrap">
+        <input type="text" id="new-folder-link" placeholder="https://drive.google.com/drive/folders/...">
+        <button type="button" id="clearFolderLinkBtn" class="clearFieldBtn hidden" aria-label="Clear link">✕</button>
+      </div>      <div id="folder-preview" class="folderPreview hidden"></div>
       <div id="add-folder-error" class="error-text hidden"></div>
       <div class="confirmButtons">
         <button type="button" id="addFolderCancelBtn">Cancel</button>
@@ -347,9 +361,31 @@ const initData = tg ? (tg.initData || '') : '';
 const tgUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : null;
 const chatId = tgUser ? tgUser.id : null;
 
-let selectedFolder = null; // { label, driveFolderId } — committed, shown on the main form
-let pendingFolder = null; // { label, driveFolderId } — radio-picked inside the overlay, not yet confirmed
+let selectedFolder = null; // { label, driveFolderId, path } — committed, shown on the main form
+let pendingFolder = null; // { label, driveFolderId, path } — highlighted inside the overlay, not yet confirmed
 let autoFilledName = false; // true only while name-input's value is one WE set — cleared the instant the user types
+let selectedRowEl = null; // the currently highlighted row element inside the folder-picker tree
+
+// Shows a ✕ inside a text field whenever it has content, and clears it on
+// tap. Clearing re-dispatches a real 'input' event rather than duplicating
+// each field's own side effects (auto-fill state, live preview, enabling/
+// disabling buttons, etc.) — whatever already runs on typing runs the same
+// way on clearing.
+function wireClearButton(inputId, btnId) {
+  const input = document.getElementById(inputId);
+  const btn = document.getElementById(btnId);
+  const sync = () => btn.classList.toggle('hidden', !input.value);
+  input.addEventListener('input', sync);
+  btn.onclick = () => {
+    input.value = '';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.focus();
+  };
+  sync();
+}
+wireClearButton('url-input', 'clearUrlBtn');
+wireClearButton('name-input', 'clearNameBtn');
+wireClearButton('new-folder-link', 'clearFolderLinkBtn');
 let pollTimer = null;
 let currentUsername = '';
 
@@ -635,13 +671,26 @@ async function fetchYouTubeTitle(url, seq) {
 // ---- Folder picker (destination selection) ----
 document.getElementById('folder-select-btn').onclick = () => {
   pendingFolder = null;
+  selectedRowEl = null;
   const confirmBtn = document.getElementById('folderPickerConfirmBtn');
   confirmBtn.disabled = true;
-  confirmBtn.textContent = '🔒 Download here';
+  confirmBtn.textContent = 'Download here';
+  updatePathPreview(null);
   openOverlay('folderPickerOverlay');
   loadFolderTree();
 };
 document.getElementById('folderPickerCloseBtn').onclick = () => closeOverlay('folderPickerOverlay');
+
+function updatePathPreview(path) {
+  const el = document.getElementById('folderPathPreview');
+  if (!path || !path.length) {
+    el.textContent = 'No folder selected yet';
+    el.classList.add('placeholder');
+    return;
+  }
+  el.classList.remove('placeholder');
+  el.textContent = '📁 ' + path.join(' › ');
+}
 
 async function loadFolderTree() {
   const container = document.getElementById('folder-tree');
@@ -663,14 +712,15 @@ async function loadFolderTree() {
     container.innerHTML = '<div class="emptyNote">No folders yet — add one from Settings.</div>';
     return;
   }
-  folders.forEach(f => container.appendChild(buildFolderRow(f)));
+  folders.forEach(f => container.appendChild(buildFolderRow(f, [])));
 }
 
-function buildFolderRow(folder) {
+function buildFolderRow(folder, parentPath) {
   const wrap = document.createElement('div');
   wrap.className = 'folderRowWrap';
 
   const locked = folder.writable === false;
+  const path = (parentPath || []).concat(folder.label); // full breadcrumb down to this folder
 
   const row = document.createElement('div');
   row.className = 'folder-row' + (locked ? ' locked' : '');
@@ -679,18 +729,6 @@ function buildFolderRow(folder) {
   arrow.className = 'expand-arrow';
   arrow.textContent = '›';
 
-  // Shared radio group name across every row at every depth — including
-  // rows for subfolders added later via the expand arrow — so the browser
-  // itself enforces "only one folder selected, anywhere in the tree" with
-  // no extra bookkeeping needed here.
-  const radio = document.createElement('input');
-  radio.type = 'radio';
-  radio.name = 'folderPickRadio';
-  radio.className = 'folderRadio';
-  radio.value = folder.driveFolderId;
-  radio.disabled = locked;
-  if (selectedFolder && selectedFolder.driveFolderId === folder.driveFolderId) radio.checked = true;
-
   const label = document.createElement('span');
   label.className = 'label';
   label.textContent = folder.label;
@@ -698,26 +736,13 @@ function buildFolderRow(folder) {
     label.title = "This folder isn't shared with Editor access anymore — choose another folder, or fix sharing in Drive.";
   }
 
-  const selectThisFolder = () => {
-    if (locked) return;
-    radio.checked = true;
-    pendingFolder = folder;
-    const confirmBtn = document.getElementById('folderPickerConfirmBtn');
-    confirmBtn.disabled = false;
-    confirmBtn.textContent = 'Download here';
-  };
-  radio.onchange = selectThisFolder;
-  if (!locked) label.onclick = selectThisFolder;
-
   const childrenBox = document.createElement('div');
   childrenBox.className = 'children';
 
-  arrow.onclick = async () => {
-    if (childrenBox.classList.contains('open')) {
-      childrenBox.classList.remove('open');
-      arrow.textContent = '›';
-      return;
-    }
+  async function expandChildren() {
+    arrow.textContent = '⌄';
+    childrenBox.classList.add('open');
+    if (childrenBox.dataset.loaded === '1') return; // already fetched — just reveal it
     childrenBox.innerHTML = loadingRowHtml('Loading…');
     let children = [];
     try {
@@ -727,14 +752,47 @@ function buildFolderRow(folder) {
     if (!children.length) {
       childrenBox.innerHTML = '<div class="emptyNote">No subfolders</div>';
     } else {
-      children.forEach(c => childrenBox.appendChild(buildFolderRow(c)));
+      children.forEach(c => childrenBox.appendChild(buildFolderRow(c, path)));
     }
-    childrenBox.classList.add('open');
-    arrow.textContent = '⌄';
+    childrenBox.dataset.loaded = '1';
+  }
+
+  function collapseChildren() {
+    childrenBox.classList.remove('open');
+    arrow.textContent = '›';
+  }
+
+  // Selecting a folder — highlight+fill, like picking a folder in a desktop
+  // file browser's tree pane — also reveals its subfolders underneath it,
+  // so there's no separate "expand" step needed to see what's inside the
+  // folder you just picked.
+  const selectThisFolder = () => {
+    if (locked) return;
+    if (selectedRowEl && selectedRowEl !== row) selectedRowEl.classList.remove('selected');
+    row.classList.add('selected');
+    selectedRowEl = row;
+    pendingFolder = { label: folder.label, driveFolderId: folder.driveFolderId, path };
+    const confirmBtn = document.getElementById('folderPickerConfirmBtn');
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = 'Download here';
+    updatePathPreview(path);
+    expandChildren();
+  };
+  if (!locked) label.onclick = selectThisFolder;
+
+  // The arrow still toggles expand/collapse on its own, independent of
+  // selection — so you can browse deeper without committing to a folder.
+  arrow.onclick = () => {
+    if (childrenBox.classList.contains('open')) collapseChildren();
+    else expandChildren();
   };
 
+  if (selectedFolder && selectedFolder.driveFolderId === folder.driveFolderId) {
+    row.classList.add('selected');
+    selectedRowEl = row;
+  }
+
   row.appendChild(arrow);
-  row.appendChild(radio);
   row.appendChild(label);
   if (locked) {
     const lock = document.createElement('span');
@@ -748,10 +806,10 @@ function buildFolderRow(folder) {
 }
 
 document.getElementById('folderPickerConfirmBtn').onclick = () => {
-  if (!pendingFolder) return; // stays locked/disabled until a radio is picked, but guard anyway
+  if (!pendingFolder) return; // stays disabled until a folder is picked, but guard anyway
   selectedFolder = pendingFolder;
   const btn = document.getElementById('folder-select-btn');
-  btn.querySelector('.folder-select-label').textContent = selectedFolder.label;
+  btn.querySelector('.folder-select-label').textContent = selectedFolder.path.join(' › ');
   btn.classList.remove('placeholder');
   updateDownloadEnabled();
   closeOverlay('folderPickerOverlay');
