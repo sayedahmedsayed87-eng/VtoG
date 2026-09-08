@@ -81,7 +81,12 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .folder-row{display:flex;align-items:center;gap:8px;padding:10px 8px;cursor:pointer;border-radius:10px}
 .folder-row.selected{background:color-mix(in srgb,var(--button) 16%,transparent)}
 .folder-row.selected .label{font-weight:800;color:var(--button)}
-.folder-row .expand-arrow{width:22px;color:var(--muted);font-size:12px;flex:none}
+.folder-row .expand-arrow{width:30px;height:30px;display:flex;align-items:center;justify-content:center;color:var(--button);font-size:20px;font-weight:900;flex:none;border-radius:8px}
+.folder-row .expand-arrow:active{background:color-mix(in srgb,var(--button) 14%,transparent)}
+.folder-row .expand-arrow-spacer{width:30px;flex:none}
+.downloadHeader{display:flex;justify-content:flex-end;margin-bottom:6px}
+.clearAllBtn{width:auto;min-height:0;margin:0;padding:7px 13px;border-radius:99px;background:color-mix(in srgb,var(--muted) 10%,transparent);color:var(--muted);border:1px solid var(--border);font-size:12.5px;font-weight:800}
+.clearAllBtn:active{transform:scale(.95)}
 .folder-row .label{flex:1;font-size:14.5px;min-width:0;overflow-wrap:anywhere}
 .folder-row.locked .label{color:var(--muted);cursor:default}
 .lockBadge{flex:none;color:var(--warning);font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:99px;background:color-mix(in srgb,var(--warning) 14%,transparent);white-space:nowrap}
@@ -228,6 +233,10 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
       <div class="tabContent">
 
         <div id="tab-download" class="tabPane active">
+          <div class="downloadHeader">
+            <button type="button" id="clearAllBtn" class="clearAllBtn">Clear all</button>
+          </div>
+
           <label for="url-input">Video link</label>
           <div class="clearableInputWrap">
             <input type="text" id="url-input" placeholder="Paste a Facebook, Instagram, YouTube or X link">
@@ -242,8 +251,9 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
           </div>
 
           <label>Destination folder</label>
+          <div id="mainPathPreview" class="pathPreview placeholder">📁 No folder selected yet</div>
           <button type="button" class="folder-select placeholder" id="folder-select-btn">
-            <span class="folder-select-label">Choose a folder</span>
+            <span class="folder-select-label">📁 Choose a folder</span>
           </button>
 
           <div id="main-error" class="error-text hidden"></div>
@@ -720,18 +730,31 @@ function buildFolderRow(folder, parentPath) {
   wrap.className = 'folderRowWrap';
 
   const locked = folder.writable === false;
+  const hasChildren = (folder.childCount || 0) > 0;
   const path = (parentPath || []).concat(folder.label); // full breadcrumb down to this folder
 
   const row = document.createElement('div');
   row.className = 'folder-row' + (locked ? ' locked' : '');
 
-  const arrow = document.createElement('span');
-  arrow.className = 'expand-arrow';
-  arrow.textContent = '›';
+  // Only folders that actually have subfolders get an arrow — nothing to
+  // expand into otherwise, so no arrow and no "no subfolders" filler text.
+  let arrow = null;
+  if (hasChildren) {
+    arrow = document.createElement('span');
+    arrow.className = 'expand-arrow';
+    arrow.textContent = '›';
+  } else {
+    arrow = document.createElement('span');
+    arrow.className = 'expand-arrow-spacer'; // keeps every row's label aligned to the same column
+  }
+
+  const icon = document.createElement('span');
+  icon.textContent = '📁';
 
   const label = document.createElement('span');
   label.className = 'label';
-  label.textContent = folder.label;
+  label.appendChild(icon);
+  label.appendChild(document.createTextNode(' ' + folder.label));
   if (locked) {
     label.title = "This folder isn't shared with Editor access anymore — choose another folder, or fix sharing in Drive.";
   }
@@ -741,6 +764,7 @@ function buildFolderRow(folder, parentPath) {
 
   async function expandChildren() {
     arrow.textContent = '⌄';
+    icon.textContent = '📂';
     childrenBox.classList.add('open');
     if (childrenBox.dataset.loaded === '1') return; // already fetched — just reveal it
     childrenBox.innerHTML = loadingRowHtml('Loading…');
@@ -749,23 +773,20 @@ function buildFolderRow(folder, parentPath) {
       children = await callApi('listChildFolders', { chatId, parentId: folder.driveFolderId });
     } catch (e) { /* leave empty */ }
     childrenBox.innerHTML = '';
-    if (!children.length) {
-      childrenBox.innerHTML = '<div class="emptyNote">No subfolders</div>';
-    } else {
-      children.forEach(c => childrenBox.appendChild(buildFolderRow(c, path)));
-    }
+    children.forEach(c => childrenBox.appendChild(buildFolderRow(c, path)));
     childrenBox.dataset.loaded = '1';
   }
 
   function collapseChildren() {
     childrenBox.classList.remove('open');
-    arrow.textContent = '›';
+    if (arrow.classList.contains('expand-arrow')) arrow.textContent = '›';
+    icon.textContent = '📁';
   }
 
   // Selecting a folder — highlight+fill, like picking a folder in a desktop
-  // file browser's tree pane — also reveals its subfolders underneath it,
-  // so there's no separate "expand" step needed to see what's inside the
-  // folder you just picked.
+  // file browser's tree pane — also reveals its subfolders underneath it
+  // (when it has any), so there's no separate "expand" step needed to see
+  // what's inside the folder you just picked.
   const selectThisFolder = () => {
     if (locked) return;
     if (selectedRowEl && selectedRowEl !== row) selectedRowEl.classList.remove('selected');
@@ -776,16 +797,18 @@ function buildFolderRow(folder, parentPath) {
     confirmBtn.disabled = false;
     confirmBtn.textContent = 'Download here';
     updatePathPreview(path);
-    expandChildren();
+    if (hasChildren) expandChildren();
   };
   if (!locked) label.onclick = selectThisFolder;
 
   // The arrow still toggles expand/collapse on its own, independent of
   // selection — so you can browse deeper without committing to a folder.
-  arrow.onclick = () => {
-    if (childrenBox.classList.contains('open')) collapseChildren();
-    else expandChildren();
-  };
+  if (hasChildren) {
+    arrow.onclick = () => {
+      if (childrenBox.classList.contains('open')) collapseChildren();
+      else expandChildren();
+    };
+  }
 
   if (selectedFolder && selectedFolder.driveFolderId === folder.driveFolderId) {
     row.classList.add('selected');
@@ -808,12 +831,27 @@ function buildFolderRow(folder, parentPath) {
 document.getElementById('folderPickerConfirmBtn').onclick = () => {
   if (!pendingFolder) return; // stays disabled until a folder is picked, but guard anyway
   selectedFolder = pendingFolder;
-  const btn = document.getElementById('folder-select-btn');
-  btn.querySelector('.folder-select-label').textContent = selectedFolder.path.join(' › ');
-  btn.classList.remove('placeholder');
+  updateMainPathPreview(selectedFolder.path);
   updateDownloadEnabled();
   closeOverlay('folderPickerOverlay');
 };
+
+// Reflects the confirmed destination as text above the (always-static)
+// "Choose a folder" button — the button itself never changes label, only
+// this line and its placeholder styling change.
+function updateMainPathPreview(path) {
+  const el = document.getElementById('mainPathPreview');
+  const btn = document.getElementById('folder-select-btn');
+  if (!path || !path.length) {
+    el.textContent = '📁 No folder selected yet';
+    el.classList.add('placeholder');
+    btn.classList.add('placeholder');
+    return;
+  }
+  el.classList.remove('placeholder');
+  el.textContent = '📁 ' + path.join(' › ');
+  btn.classList.remove('placeholder');
+}
 
 // ---- Settings tab: manage folders ----
 async function loadManageFolders() {
@@ -861,7 +899,7 @@ function buildManageFolderCard(folder) {
 
   const name = document.createElement('div');
   name.className = 'manageFolderName';
-  name.textContent = folder.label;
+  name.textContent = '📁 ' + folder.label;
   info.appendChild(name);
 
   const count = folder.childCount || 0;
@@ -951,9 +989,7 @@ document.getElementById('removeConfirmBtn').onclick = async () => {
   loadManageFolders();
   if (selectedFolder && selectedFolder.driveFolderId === folder.driveFolderId) {
     selectedFolder = null;
-    const btn = document.getElementById('folder-select-btn');
-    btn.querySelector('.folder-select-label').textContent = 'Choose a folder';
-    btn.classList.add('placeholder');
+    updateMainPathPreview(null);
     updateDownloadEnabled();
   }
 };
@@ -1151,18 +1187,23 @@ document.getElementById('download-btn').onclick = async () => {
 document.getElementById('progressCloseBtn').onclick = () => {
   if (pollTimer) clearInterval(pollTimer);
   closeOverlay('progressOverlay');
-  // reset form for the next download
+  clearAllFields(); // reset form for the next download
+};
+
+// Clears the link, name, and destination folder back to their empty state —
+// shared by the post-download reset and the "Clear all" button.
+function clearAllFields() {
   document.getElementById('url-input').value = '';
   document.getElementById('name-input').value = '';
+  document.getElementById('clearUrlBtn').classList.add('hidden');
+  document.getElementById('clearNameBtn').classList.add('hidden');
   autoFilledName = false;
   updateEditNameVisibility();
   selectedFolder = null;
-  const fbtn = document.getElementById('folder-select-btn');
-  fbtn.querySelector('.folder-select-label').textContent = 'Choose a folder';
-  fbtn.classList.add('placeholder');
+  updateMainPathPreview(null);
   updateDownloadEnabled();
-  document.getElementById('download-btn').disabled = true;
-};
+}
+document.getElementById('clearAllBtn').onclick = clearAllFields;
 
 // ---- Progress polling ----
 function pollJobStatus(jobId) {
