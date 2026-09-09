@@ -3,6 +3,23 @@
 <head>
 <script>
 window.onerror = function(msg, url, line, col, error) {
+  // Every API call injects a <script src="https://script.google.com/...">
+  // tag (JSONP) to sidestep fetch()/CORS on mobile WebViews. When that
+  // request doesn't come back as valid JS — e.g. Apps Script returns an
+  // HTML sign-in/consent page instead of running the script, which can
+  // happen on a deployment/permissions hiccup or a transient Google outage —
+  // the browser can't parse it and throws, but because the script is
+  // cross-origin and sent no CORS headers, the browser hides the real
+  // message and reports only the opaque "Script error." at line 0, col 0.
+  // That's non-actionable and NOT a sign the app itself is broken: the
+  // specific API call that triggered it already fails gracefully on its
+  // own (each call has its own try/catch and error UI), so nuking the
+  // entire screen for this is worse than doing nothing. Only replace the
+  // screen for errors that carry real diagnostic info.
+  if (msg === 'Script error.' && line === 0 && col === 0) {
+    console.warn('Suppressed opaque cross-origin script error (likely a JSONP API call that did not return valid JS).');
+    return true; // prevents the browser's default handling too
+  }
   document.body.innerHTML = '<pre style="padding:16px;white-space:pre-wrap;font-size:12px;color:red;background:#fff">JS ERROR:\n' + msg + '\nLine ' + line + ':' + col + '\n\n' + (error && error.stack || '') + '</pre>';
 };
 window.addEventListener('unhandledrejection', function(e) {
@@ -43,8 +60,6 @@ label,.formLabel{display:block;font-size:12px;color:var(--muted);margin:14px 0 5
 label:first-of-type,.formLabel:first-of-type{margin-top:0}
 input[type=text]{width:100%;padding:11px 13px;border-radius:11px;border:1px solid var(--border);background:var(--bg);color:var(--text);font:inherit;font-size:14.5px}
 input[type=text]:focus{outline:2px solid color-mix(in srgb,var(--button) 40%,transparent);outline-offset:1px}
-.folder-select{width:100%;display:flex;align-items:center;text-align:left;padding:16px 16px 16px 18px;min-height:56px;box-sizing:border-box;border-radius:14px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:16px;font-weight:800;cursor:pointer}
-.folder-select.placeholder{color:var(--muted);font-weight:600}
 .folder-select-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lockedConfirmBtn{width:100%;margin-top:14px}
 .nameInputWrap{position:relative}
@@ -58,7 +73,7 @@ input[type=text]:focus{outline:2px solid color-mix(in srgb,var(--button) 40%,tra
 .clearFieldBtn:active{background:color-mix(in srgb,var(--muted) 28%,transparent)}
 .clearFieldBtn.hidden{display:none}
 .pathPreview{flex:none;font-size:13px;font-weight:700;color:var(--text);background:color-mix(in srgb,var(--button) 10%,transparent);border-radius:10px;padding:9px 12px;margin-bottom:12px;overflow-wrap:anywhere}
-.pathPreview.placeholder{font-weight:600;font-style:italic;color:var(--muted);background:color-mix(in srgb,var(--muted) 8%,transparent)}
+.pathPreview.placeholder{font-weight:600;color:var(--muted);background:color-mix(in srgb,var(--muted) 8%,transparent)}
 
 button{width:100%;min-height:52px;margin-top:14px;padding:12px 16px;border:0;border-radius:15px;font:inherit;font-size:clamp(15px,4.2vw,16px);font-weight:800;color:var(--buttonText);background:var(--button);cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;gap:8px}
 button:disabled{opacity:.45;cursor:default}
@@ -77,20 +92,20 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .tabPane.active{display:block}
 
 .folder-tree{max-height:340px;overflow-y:auto}
-.folderRowWrap{background:color-mix(in srgb,var(--muted) 6%,var(--surface));border:1px solid var(--border);border-radius:14px;padding:4px 12px;margin:8px 0}
-.folder-row{display:flex;align-items:center;gap:8px;padding:10px 8px;cursor:pointer;border-radius:10px}
+.folderRowWrap{margin:0}
+.folder-row{display:flex;align-items:center;gap:8px;padding:7px 6px;cursor:pointer;border-radius:10px;border-bottom:1px solid var(--border)}
 .folder-row.selected{background:color-mix(in srgb,var(--button) 16%,transparent)}
 .folder-row.selected .label{font-weight:800;color:var(--button)}
-.folder-row .expand-arrow{width:30px;height:30px;display:flex;align-items:center;justify-content:center;color:var(--button);font-size:20px;font-weight:900;flex:none;border-radius:8px}
+.folder-row .expand-arrow{width:34px;height:34px;display:flex;align-items:center;justify-content:center;color:var(--button);font-size:30px;font-weight:900;flex:none;border-radius:8px}
 .folder-row .expand-arrow:active{background:color-mix(in srgb,var(--button) 14%,transparent)}
-.folder-row .expand-arrow-spacer{width:30px;flex:none}
+.folder-row .expand-arrow-spacer{width:34px;flex:none}
 .downloadHeader{display:flex;justify-content:flex-end;margin-bottom:6px}
 .clearAllBtn{width:auto;min-height:0;margin:0;padding:7px 13px;border-radius:99px;background:color-mix(in srgb,var(--muted) 10%,transparent);color:var(--muted);border:1px solid var(--border);font-size:12.5px;font-weight:800}
 .clearAllBtn:active{transform:scale(.95)}
 .folder-row .label{flex:1;font-size:14.5px;min-width:0;overflow-wrap:anywhere}
 .folder-row.locked .label{color:var(--muted);cursor:default}
 .lockBadge{flex:none;color:var(--warning);font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:99px;background:color-mix(in srgb,var(--warning) 14%,transparent);white-space:nowrap}
-.children{padding-left:20px;display:none}
+.children{padding-left:16px;display:none}
 .children.open{display:block}
 .emptyNote{color:var(--muted);font-size:13.5px;padding:14px 2px;text-align:center}
 
@@ -252,7 +267,7 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 
           <label>Destination folder</label>
           <div id="mainPathPreview" class="pathPreview placeholder">📁 No folder selected yet</div>
-          <button type="button" class="folder-select placeholder" id="folder-select-btn">
+          <button type="button" class="folder-select secondary" id="folder-select-btn">
             <span class="folder-select-label">📁 Choose a folder</span>
           </button>
 
@@ -263,6 +278,9 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 
         <div id="tab-settings" class="tabPane">
           <div class="settingsHeader">
+            <button type="button" id="reloadFoldersBtn" class="addFolderFab" aria-label="Reload folders" style="margin-right:8px">
+              <span>🔄</span><span>Reload</span>
+            </button>
             <button type="button" id="openAddFolderBtn" class="addFolderFab" aria-label="Add folder">
               <span>➕</span><span>Add folder</span>
             </button>
@@ -680,12 +698,17 @@ async function fetchYouTubeTitle(url, seq) {
 
 // ---- Folder picker (destination selection) ----
 document.getElementById('folder-select-btn').onclick = () => {
-  pendingFolder = null;
-  selectedRowEl = null;
+  // Start the overlay from whatever is already confirmed (if anything),
+  // rather than always resetting to "nothing selected" — the tree below
+  // re-highlights this same folder (see the selectedFolder check in
+  // buildFolderRow) and the preview line matches it too. The user is still
+  // completely free to tap a different folder to change it.
+  pendingFolder = selectedFolder;
+  selectedRowEl = null; // re-set by buildFolderRow once the matching row renders
   const confirmBtn = document.getElementById('folderPickerConfirmBtn');
-  confirmBtn.disabled = true;
+  confirmBtn.disabled = !selectedFolder;
   confirmBtn.textContent = 'Download here';
-  updatePathPreview(null);
+  updatePathPreview(selectedFolder ? selectedFolder.path : null);
   openOverlay('folderPickerOverlay');
   loadFolderTree();
 };
@@ -709,12 +732,13 @@ async function loadFolderTree() {
   try {
     folders = await callApi('listRootFolders', { chatId });
   } catch (e) {
-    container.innerHTML = '<div class="emptyNote">Could not load folders.</div>';
+    container.innerHTML = '';
+    container.appendChild(buildRetryNote('Could not load folders.', loadFolderTree));
     return;
   }
   if (isErrorResult(folders)) {
-    container.innerHTML = '<div class="emptyNote">' + escapeHtml(folders.error) +
-      (folders.error === 'Unauthorized' ? ' — try reloading the app.' : '') + '</div>';
+    container.innerHTML = '';
+    container.appendChild(buildRetryNote(folders.error + (folders.error === 'Unauthorized' ? ' — try reloading the app.' : ''), loadFolderTree));
     return;
   }
   container.innerHTML = '';
@@ -723,6 +747,24 @@ async function loadFolderTree() {
     return;
   }
   folders.forEach(f => container.appendChild(buildFolderRow(f, [])));
+}
+
+// Shared "something didn't load" note with a Try again button, used
+// wherever a folder list fetch fails (the picker tree and Settings).
+function buildRetryNote(message, onRetry) {
+  const wrap = document.createElement('div');
+  wrap.className = 'emptyNote';
+  const msg = document.createElement('div');
+  msg.textContent = message;
+  wrap.appendChild(msg);
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'secondary';
+  btn.style.marginTop = '10px';
+  btn.textContent = 'Try again';
+  btn.onclick = onRetry;
+  wrap.appendChild(btn);
+  return wrap;
 }
 
 function buildFolderRow(folder, parentPath) {
@@ -845,12 +887,12 @@ function updateMainPathPreview(path) {
   if (!path || !path.length) {
     el.textContent = '📁 No folder selected yet';
     el.classList.add('placeholder');
-    btn.classList.add('placeholder');
+    btn.classList.add('secondary');
     return;
   }
   el.classList.remove('placeholder');
   el.textContent = '📁 ' + path.join(' › ');
-  btn.classList.remove('placeholder');
+  btn.classList.remove('secondary');
 }
 
 // ---- Settings tab: manage folders ----
@@ -866,7 +908,10 @@ async function loadManageFolders() {
   try {
     folders = await callApi('listRootFolders', { chatId });
   } catch (e) {
-    if (!hasContent) container.innerHTML = '<div class="emptyNote">Could not load folders.</div>';
+    if (!hasContent) {
+      container.innerHTML = '';
+      container.appendChild(buildRetryNote('Could not load folders.', loadManageFolders));
+    }
     return; // a refresh that fails while something's already on screen just leaves it as-is
   }
 
@@ -874,8 +919,8 @@ async function loadManageFolders() {
     // Never let a stale-session or server error masquerade as "you have no
     // folders" — and never wipe a list that's already showing correctly.
     if (!hasContent) {
-      container.innerHTML = '<div class="emptyNote">' + escapeHtml(folders.error) +
-        (folders.error === 'Unauthorized' ? ' — try reloading the app.' : '') + '</div>';
+      container.innerHTML = '';
+      container.appendChild(buildRetryNote(folders.error + (folders.error === 'Unauthorized' ? ' — try reloading the app.' : ''), loadManageFolders));
     }
     return;
   }
@@ -1016,6 +1061,8 @@ function conflictMessage(conflict) {
   };
   return messages[conflict.conflict] || 'This folder conflicts with an existing one.';
 }
+
+document.getElementById('reloadFoldersBtn').onclick = () => loadManageFolders();
 
 // ---- Add folder modal ----
 document.getElementById('openAddFolderBtn').onclick = () => {
