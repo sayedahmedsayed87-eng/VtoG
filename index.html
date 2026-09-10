@@ -137,15 +137,6 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .rowValue{font-size:14px;font-weight:800;line-height:1.4;overflow-wrap:anywhere}
 .rowIcon{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:14px;background:color-mix(in srgb,var(--button) 12%,transparent)}
 
-.stage-list{list-style:none;padding:0;margin:20px 0}
-.stage-list li{padding:12px 0;font-size:14.5px;color:var(--muted);display:flex;align-items:center;gap:10px}
-.stage-list li.active{color:var(--text);font-weight:700}
-.stage-list li.done{color:var(--button)}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
-.stage-list li.active .dot{background:var(--button);animation:pulse 1s infinite}
-.stage-list li.done .dot{background:var(--button)}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-
 .warning{margin-top:14px;padding:14px;border-radius:15px;background:color-mix(in srgb,var(--warning) 12%,transparent);text-align:left;line-height:1.7;font-size:13.5px}
 .warning.danger-warning{background:color-mix(in srgb,var(--danger) 10%,transparent)}
 .warningTitle{font-weight:850;margin-bottom:2px}
@@ -311,21 +302,13 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
   </div>
 </div>
 
-<!-- Progress overlay -->
-<div id="progressOverlay" class="help-overlay hidden">
-  <div class="help-inner">
-    <div class="help-header">
-      <div class="help-title">Downloading</div>
-    </div>
-    <div class="help-body">
-      <ul class="stage-list" id="stage-list">
-        <li id="stage-downloading"><span class="dot"></span> Downloading</li>
-        <li id="stage-uploading"><span class="dot"></span> Uploading to Drive</li>
-        <li id="stage-finished"><span class="dot"></span> Done</li>
-      </ul>
-      <div id="progress-warning" class="warning hidden"><div class="warningTitle" id="progress-warning-title"></div><div id="progress-warning-msg"></div></div>
-      <button type="button" id="progressCloseBtn" class="secondary">Close</button>
-    </div>
+<!-- Queued confirmation overlay -->
+<div id="queuedOverlay" class="help-overlay hidden">
+  <div class="help-inner" style="text-align:center">
+    <div class="icon success" style="margin:0 auto 12px">📥</div>
+    <h2>Added to the queue</h2>
+    <p class="message" id="queuedMsg">We'll send you a message on Telegram as soon as it's ready.</p>
+    <button type="button" id="queuedCloseBtn">Got it</button>
   </div>
 </div>
 
@@ -414,7 +397,6 @@ function wireClearButton(inputId, btnId) {
 wireClearButton('url-input', 'clearUrlBtn');
 wireClearButton('name-input', 'clearNameBtn');
 wireClearButton('new-folder-link', 'clearFolderLinkBtn');
-let pollTimer = null;
 let currentUsername = '';
 
 // ---- Screen helpers ----
@@ -1224,16 +1206,13 @@ document.getElementById('download-btn').onclick = async () => {
   }
 
   setButtonLoading(btn, false);
-  openOverlay('progressOverlay');
-  document.getElementById('progress-warning').classList.add('hidden');
-  ['stage-downloading', 'stage-uploading', 'stage-finished'].forEach(id => document.getElementById(id).classList.remove('active', 'done'));
-  document.getElementById('progressCloseBtn').textContent = 'Cancel';
-  pollJobStatus(result.jobId);
+  document.getElementById('queuedMsg').textContent =
+    `"${name}" has been added to your queue — we'll send you a message on Telegram as soon as it's ready.`;
+  openOverlay('queuedOverlay');
 };
 
-document.getElementById('progressCloseBtn').onclick = () => {
-  if (pollTimer) clearInterval(pollTimer);
-  closeOverlay('progressOverlay');
+document.getElementById('queuedCloseBtn').onclick = () => {
+  closeOverlay('queuedOverlay');
   clearAllFields(); // reset form for the next download
 };
 
@@ -1251,48 +1230,6 @@ function clearAllFields() {
   updateDownloadEnabled();
 }
 document.getElementById('clearAllBtn').onclick = clearAllFields;
-
-// ---- Progress polling ----
-function pollJobStatus(jobId) {
-  const stages = { downloading: 'stage-downloading', uploading: 'stage-uploading', finished: 'stage-finished' };
-
-  pollTimer = setInterval(async () => {
-    if (document.hidden) return; // app backgrounded — skip this tick, no need to spend a call
-    let status;
-    try {
-      status = await callApi('getJobStatus', { jobId });
-    } catch (e) { return; }
-    if (!status || status.error) return;
-
-    Object.values(stages).forEach(id => document.getElementById(id).classList.remove('active', 'done'));
-
-    if (status.status === 'downloading') {
-      document.getElementById(stages.downloading).classList.add('active');
-    } else if (status.status === 'uploading') {
-      document.getElementById(stages.downloading).classList.add('done');
-      document.getElementById(stages.uploading).classList.add('active');
-    } else if (status.status === 'finished') {
-      document.getElementById(stages.downloading).classList.add('done');
-      document.getElementById(stages.uploading).classList.add('done');
-      document.getElementById(stages.finished).classList.add('done');
-      showProgressResult(false, 'Done', `Saved ${status.customName} (${status.sizeMb}MB).`);
-      clearInterval(pollTimer);
-      document.getElementById('progressCloseBtn').textContent = 'Close';
-    } else if (status.status === 'failed') {
-      showProgressResult(true, 'Download failed', status.errorMessage || 'Something went wrong with this download.');
-      clearInterval(pollTimer);
-      document.getElementById('progressCloseBtn').textContent = 'Close';
-    }
-  }, 3000);
-}
-
-function showProgressResult(isError, title, msg) {
-  const box = document.getElementById('progress-warning');
-  box.classList.remove('hidden');
-  box.classList.toggle('danger-warning', isError);
-  document.getElementById('progress-warning-title').textContent = title;
-  document.getElementById('progress-warning-msg').textContent = msg;
-}
 
 // ---- Help overlay ----
 const HELP_CONTENT = [
