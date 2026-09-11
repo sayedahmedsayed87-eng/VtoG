@@ -504,6 +504,46 @@ function isErrorResult(r) {
   return !!(r && !Array.isArray(r) && r.error);
 }
 
+// ---- Profile cache (registration status + username) ----
+//
+// checkUser is a network round-trip through the same JSONP transport that
+// can silently stall (see callApi's retry comment above) — and for a
+// returning user, the answer is essentially always the same as last time.
+// Caching it in localStorage lets a repeat open skip the blocking
+// "Checking your account…" screen entirely and show the real app
+// instantly, while still confirming live in the background and only
+// interrupting the person if something actually changed (they somehow got
+// deregistered, or their username changed since the cache was written).
+//
+// localStorage, not PropertiesService: this is purely a per-device,
+// per-browser convenience cache for one person's own session, with no
+// need to be visible or clearable from the server side the way the
+// folder-listing cache is.
+function profileCacheKey_(chatId) {
+  return 'profile_' + chatId;
+}
+
+function getCachedProfile(chatId) {
+  try {
+    const raw = localStorage.getItem(profileCacheKey_(chatId));
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null; // localStorage unavailable/corrupt — just fall back to a live check
+  }
+}
+
+function setCachedProfile(chatId, data) {
+  try {
+    localStorage.setItem(profileCacheKey_(chatId), JSON.stringify(data));
+  } catch (e) { /* best-effort only — a live check still works without this */ }
+}
+
+function clearCachedProfile(chatId) {
+  try {
+    localStorage.removeItem(profileCacheKey_(chatId));
+  } catch (e) { /* nothing to clean up if storage was never available */ }
+}
+
 // ---- Init ----
 window.addEventListener('DOMContentLoaded', init);
 
@@ -523,7 +563,46 @@ async function init() {
     return;
   }
 
+  const cached = getCachedProfile(chatId);
+  if (cached && cached.registered) {
+    currentUsername = cached.username;
+    document.getElementById('welcome').textContent = '@' + currentUsername;
+    setFooterStatus('Ready');
+    showScreen('screen-app');
+    loadFolderTree();
+    verifyRegistrationInBackground();
+    return;
+  }
+
   await checkRegistration();
+}
+
+// Re-confirms registration with the server after an instant, cache-based
+// open. Deliberately quiet on failure — a transient network hiccup here
+// shouldn't yank away an app the person is already looking at and using;
+// the next successful check (or the next action that actually requires
+// registration) will catch a real problem instead.
+async function verifyRegistrationInBackground() {
+  let result;
+  try {
+    result = await callApi('checkUser', { chatId });
+  } catch (e) {
+    return;
+  }
+  if (isErrorResult(result)) return;
+
+  if (result.registered) {
+    if (result.username !== currentUsername) {
+      currentUsername = result.username;
+      document.getElementById('welcome').textContent = '@' + currentUsername;
+    }
+    setCachedProfile(chatId, { registered: true, username: result.username });
+  } else {
+    // Genuinely no longer registered — the cache was wrong, so drop it and
+    // run the real (blocking) flow so the person sees the actual state.
+    clearCachedProfile(chatId);
+    await checkRegistration();
+  }
 }
 
 async function checkRegistration() {
@@ -545,10 +624,12 @@ async function checkRegistration() {
   if (result.registered) {
     currentUsername = result.username;
     document.getElementById('welcome').textContent = '@' + currentUsername;
+    setCachedProfile(chatId, { registered: true, username: result.username });
     setFooterStatus('Ready');
     showScreen('screen-app');
     loadFolderTree();
   } else {
+    clearCachedProfile(chatId);
     await handleUnregistered();
   }
 }
@@ -592,6 +673,7 @@ async function autoRegister(username) {
 
   currentUsername = result.username;
   document.getElementById('welcome').textContent = '@' + currentUsername;
+  setCachedProfile(chatId, { registered: true, username: result.username });
   setFooterStatus('Ready');
   showScreen('screen-app');
   loadFolderTree();
