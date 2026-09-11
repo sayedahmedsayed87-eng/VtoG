@@ -461,8 +461,37 @@ function callApiJsonp(action, params) {
   });
 }
 
-async function callApi(action, params) {
-  const result = await callApiJsonp(action, params || {});
+// The exec -> googleusercontent.com redirect that every Apps Script Web
+// App response goes through (see the doGet/webhookResponse_ comment in
+// Api.js) is sometimes not chased reliably by a <script src> tag on some
+// Telegram in-app WebView builds: the server finishes the work (the job
+// really does get written), but the JS payload never makes it back to
+// resolve this promise, and callApiJsonp's own 20s timer eventually
+// rejects with "Request timed out" even though nothing actually failed.
+//
+// Retrying is safe here specifically because every mutating action this
+// app calls already guards against doing its effect twice: submitDownload
+// -> createJob checks for an identical (chatId, url, destFolderId) job
+// already 'queued' in the last minute (see DEDUPE_WINDOW_MS in Jobs.js —
+// that comment already anticipates exactly this WebView retry scenario);
+// addFolder checks for an existing conflict before inserting; removeFolder
+// and registerUser are naturally idempotent (no-op / overwrite on a second
+// call). So a retry after a transport failure either lands the original
+// request that got silently dropped, or safely no-ops into the
+// already-applied result — never a duplicate.
+const CALL_API_MAX_ATTEMPTS = 3;
+
+async function callApi(action, params, attempt) {
+  attempt = attempt || 1;
+  let result;
+  try {
+    result = await callApiJsonp(action, params || {});
+  } catch (e) {
+    if (attempt < CALL_API_MAX_ATTEMPTS) {
+      return callApi(action, params, attempt + 1);
+    }
+    throw e; // out of retries — let the caller's existing catch handle it
+  }
   if (!result || typeof result !== 'object') throw new Error('Invalid response from server');
   return result;
 }
