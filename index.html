@@ -147,7 +147,10 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .help-overlay.hidden{display:none}
 .help-inner{position:relative;width:min(100%,440px);max-height:min(82vh,640px);max-height:min(82dvh,640px);background:var(--surface);border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,.35);display:flex;flex-direction:column;padding:16px 16px 14px;overflow:hidden}
 .help-header{flex:none;display:flex;align-items:center;padding:2px 44px 14px 2px}
+.help-header.two-actions{padding-right:88px}
 .help-close{position:absolute;top:12px;right:12px;width:36px;height:36px;min-height:0;margin:0;flex:none;border-radius:50%;background:color-mix(in srgb,var(--muted) 10%,transparent);color:var(--text);font-size:24px;font-weight:800;line-height:1;padding:0}
+.help-reload{position:absolute;top:12px;right:56px;width:36px;height:36px;min-height:0;margin:0;flex:none;border-radius:50%;background:color-mix(in srgb,var(--muted) 10%,transparent);color:var(--text);font-size:17px;font-weight:800;line-height:1;padding:0;display:flex;align-items:center;justify-content:center}
+.help-reload:active{transform:scale(.92)}
 .help-title{font-size:clamp(18px,5vw,21px);font-weight:850}
 .help-body{flex:1;min-height:0;overflow-y:auto}
 
@@ -290,8 +293,9 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 <!-- Folder picker overlay -->
 <div id="folderPickerOverlay" class="help-overlay hidden">
   <div class="help-inner">
-    <div class="help-header">
+    <div class="help-header two-actions">
       <button type="button" class="help-close" id="folderPickerCloseBtn" aria-label="Close">×</button>
+      <button type="button" class="help-reload" id="folderTreeReloadBtn" aria-label="Reload folders">🔄</button>
       <div class="help-title">Choose a folder</div>
     </div>
     <div id="folderPathPreview" class="pathPreview placeholder">No folder selected yet</div>
@@ -695,6 +699,7 @@ document.getElementById('folder-select-btn').onclick = () => {
   loadFolderTree();
 };
 document.getElementById('folderPickerCloseBtn').onclick = () => closeOverlay('folderPickerOverlay');
+document.getElementById('folderTreeReloadBtn').onclick = () => loadFolderTree(true);
 
 function updatePathPreview(path) {
   const el = document.getElementById('folderPathPreview');
@@ -707,20 +712,20 @@ function updatePathPreview(path) {
   el.textContent = '📁 ' + path.join(' › ');
 }
 
-async function loadFolderTree() {
+async function loadFolderTree(forceReload) {
   const container = document.getElementById('folder-tree');
   container.innerHTML = loadingRowHtml('Loading folders…');
   let folders;
   try {
-    folders = await callApi('listRootFolders', { chatId });
+    folders = await callApi('listRootFolders', forceReload ? { chatId, reload: '1' } : { chatId });
   } catch (e) {
     container.innerHTML = '';
-    container.appendChild(buildRetryNote('Could not load folders.', loadFolderTree));
+    container.appendChild(buildRetryNote('Could not load folders.', () => loadFolderTree(forceReload)));
     return;
   }
   if (isErrorResult(folders)) {
     container.innerHTML = '';
-    container.appendChild(buildRetryNote(folders.error + (folders.error === 'Unauthorized' ? ' — try reloading the app.' : ''), loadFolderTree));
+    container.appendChild(buildRetryNote(folders.error + (folders.error === 'Unauthorized' ? ' — try reloading the app.' : ''), () => loadFolderTree(forceReload)));
     return;
   }
   container.innerHTML = '';
@@ -878,7 +883,7 @@ function updateMainPathPreview(path) {
 }
 
 // ---- Settings tab: manage folders ----
-async function loadManageFolders() {
+async function loadManageFolders(forceReload) {
   const container = document.getElementById('manage-folder-list');
   // Only show the spinner when there's genuinely nothing on screen yet —
   // a background refresh, a re-entry into this tab, or a refresh right
@@ -888,11 +893,11 @@ async function loadManageFolders() {
 
   let folders;
   try {
-    folders = await callApi('listRootFolders', { chatId });
+    folders = await callApi('listRootFolders', forceReload ? { chatId, reload: '1' } : { chatId });
   } catch (e) {
     if (!hasContent) {
       container.innerHTML = '';
-      container.appendChild(buildRetryNote('Could not load folders.', loadManageFolders));
+      container.appendChild(buildRetryNote('Could not load folders.', () => loadManageFolders(forceReload)));
     }
     return; // a refresh that fails while something's already on screen just leaves it as-is
   }
@@ -902,7 +907,7 @@ async function loadManageFolders() {
     // folders" — and never wipe a list that's already showing correctly.
     if (!hasContent) {
       container.innerHTML = '';
-      container.appendChild(buildRetryNote(folders.error + (folders.error === 'Unauthorized' ? ' — try reloading the app.' : ''), loadManageFolders));
+      container.appendChild(buildRetryNote(folders.error + (folders.error === 'Unauthorized' ? ' — try reloading the app.' : ''), () => loadManageFolders(forceReload)));
     }
     return;
   }
@@ -1044,7 +1049,7 @@ function conflictMessage(conflict) {
   return messages[conflict.conflict] || 'This folder conflicts with an existing one.';
 }
 
-document.getElementById('reloadFoldersBtn').onclick = () => loadManageFolders();
+document.getElementById('reloadFoldersBtn').onclick = () => loadManageFolders(true);
 
 // ---- Add folder modal ----
 document.getElementById('openAddFolderBtn').onclick = () => {
