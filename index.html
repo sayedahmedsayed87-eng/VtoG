@@ -791,19 +791,42 @@ function buildFolderRow(folder, parentPath) {
   const childrenBox = document.createElement('div');
   childrenBox.className = 'children';
 
-  async function expandChildren() {
+  async function expandChildren(forceReload) {
     arrow.textContent = '⌄';
     icon.textContent = '📂';
     childrenBox.classList.add('open');
-    if (childrenBox.dataset.loaded === '1') return; // already fetched — just reveal it
+    if (!forceReload && childrenBox.dataset.loaded === '1') return; // already fetched — just reveal it
     childrenBox.innerHTML = loadingRowHtml('Loading…');
     let children = [];
+    let failed = false;
     try {
-      children = await callApi('listChildFolders', { chatId, parentId: folder.driveFolderId });
-    } catch (e) { /* leave empty */ }
+      children = await callApi('listChildFolders', forceReload
+        ? { chatId, parentId: folder.driveFolderId, reload: '1' }
+        : { chatId, parentId: folder.driveFolderId });
+      if (isErrorResult(children)) { failed = true; children = []; }
+    } catch (e) {
+      failed = true;
+    }
     childrenBox.innerHTML = '';
-    children.forEach(c => childrenBox.appendChild(buildFolderRow(c, path)));
-    childrenBox.dataset.loaded = '1';
+    if (children.length) {
+      children.forEach(c => childrenBox.appendChild(buildFolderRow(c, path)));
+      childrenBox.dataset.loaded = '1';
+    } else {
+      // Never leave this silently blank — the arrow only shows up because
+      // a cached count said subfolders exist, so an empty result here is
+      // either a genuine change (they were removed in Drive), a fetch
+      // failure, or a stale cached count disagreeing with Drive. Say which,
+      // and offer a way to bypass the cache and check live rather than
+      // leaving the person guessing whether anything is actually broken.
+      childrenBox.appendChild(buildRetryNote(
+        failed ? 'Could not load subfolders.' : 'No subfolders found here — the folder may have changed in Drive.',
+        () => expandChildren(true)
+      ));
+      // A genuine empty result is left uncached-in-DOM as "loaded" (it's
+      // the real current state); a failure isn't, so the next expand click
+      // tries again instead of being stuck on the retry note forever.
+      childrenBox.dataset.loaded = failed ? '' : '1';
+    }
   }
 
   function collapseChildren() {
