@@ -440,6 +440,7 @@ let selectedFolder = null; // { label, driveFolderId, path } — committed, show
 let pendingFolder = null; // { label, driveFolderId, path } — highlighted inside the overlay, not yet confirmed
 let autoFilledName = false; // true only while name-input's value is one WE set — cleared the instant the user types
 let selectedRowEl = null; // the currently highlighted row element inside the folder-picker tree
+let deepLinkScreen = null; // set from the ?screen= param when opened via one of the bot's two buttons — consumed once, right after auth, to skip Home and land straight on that screen
 
 // Shows a ✕ inside a text field whenever it has content, and clears it on
 // tap. Clearing re-dispatches a real 'input' event rather than duplicating
@@ -620,9 +621,19 @@ window.addEventListener('DOMContentLoaded', init);
 async function init() {
   const params = new URLSearchParams(window.location.search);
   const prefillUrl = params.get('url');
+  const screenParam = params.get('screen'); // 'identify' or 'download' — set by the bot's two link buttons
   if (prefillUrl) {
-    document.getElementById('url-input').value = prefillUrl;
-    scheduleTitleFetch();
+    if (screenParam === 'identify') {
+      deepLinkScreen = 'screen-identify';
+      const input = document.getElementById('identify-url-input');
+      input.value = prefillUrl;
+      input.dispatchEvent(new Event('input', { bubbles: true })); // shows the X-clear button and enables Identify Video
+    } else {
+      deepLinkScreen = 'screen-app';
+      const input = document.getElementById('url-input');
+      input.value = prefillUrl;
+      input.dispatchEvent(new Event('input', { bubbles: true })); // shows the X-clear button and kicks off the YouTube title fetch
+    }
   }
 
   if (!chatId) {
@@ -638,7 +649,7 @@ async function init() {
     currentUsername = cached.username;
     document.getElementById('welcome').textContent = '@' + currentUsername;
     setFooterStatus('Ready');
-    showScreen('screen-home');
+    enterHomeOrDeepLink();
     verifyRegistrationInBackground();
     return;
   }
@@ -695,7 +706,7 @@ async function checkRegistration() {
     document.getElementById('welcome').textContent = '@' + currentUsername;
     setCachedProfile(chatId, { registered: true, username: result.username });
     setFooterStatus('Ready');
-    showScreen('screen-home');
+    enterHomeOrDeepLink();
   } else {
     clearCachedProfile(chatId);
     await handleUnregistered();
@@ -743,7 +754,7 @@ async function autoRegister(username) {
   document.getElementById('welcome').textContent = '@' + currentUsername;
   setCachedProfile(chatId, { registered: true, username: result.username });
   setFooterStatus('Ready');
-  showScreen('screen-home');
+  enterHomeOrDeepLink();
 }
 
 // Telegram only hands us initDataUnsafe.user at launch, so after the user
@@ -754,6 +765,19 @@ document.getElementById('retryUsernameBtn').onclick = () => {
 };
 
 // ---- Home navigation ----
+// Lands on whichever screen the bot's link button pointed at (consumed once,
+// right after auth succeeds) — otherwise the normal Home launcher.
+function enterHomeOrDeepLink() {
+  if (deepLinkScreen === 'screen-app') {
+    showScreen('screen-app');
+    loadFolderTree();
+  } else if (deepLinkScreen === 'screen-identify') {
+    showScreen('screen-identify');
+  } else {
+    showScreen('screen-home');
+  }
+  deepLinkScreen = null;
+}
 document.getElementById('homeGdriveBtn').onclick = () => {
   showScreen('screen-app');
   loadFolderTree();
