@@ -111,7 +111,8 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .folder-row .expand-arrow{width:34px;height:34px;display:flex;align-items:center;justify-content:center;color:var(--button);font-size:30px;font-weight:900;flex:none;border-radius:8px}
 .folder-row .expand-arrow:active{background:color-mix(in srgb,var(--button) 14%,transparent)}
 .folder-row .expand-arrow-spacer{width:34px;flex:none}
-.downloadHeader{display:flex;justify-content:flex-end;margin-bottom:6px}
+.downloadHeader{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.downloadHeader label{margin:0}
 .clearAllBtn{width:auto;min-height:0;margin:0;padding:7px 13px;border-radius:99px;background:color-mix(in srgb,var(--muted) 10%,transparent);color:var(--muted);border:1px solid var(--border);font-size:12.5px;font-weight:800}
 .clearAllBtn:active{transform:scale(.95)}
 .folder-row .label{flex:1;font-size:14.5px;min-width:0;overflow-wrap:anywhere}
@@ -122,6 +123,9 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .emptyNote{color:var(--muted);font-size:13.5px;padding:14px 2px;text-align:center}
 
 .settingsHeader{display:flex;justify-content:flex-start;margin-bottom:12px}
+.settingsHint{margin:2px 0 10px;font-size:13.5px;color:var(--muted);font-weight:650}
+.folderListHeader{display:flex;align-items:center;justify-content:space-between;margin:20px 0 10px}
+.folderListHeader label{margin:0}
 .addFolderFab{width:auto;min-height:0;margin:0;padding:9px 14px 9px 12px;border-radius:99px;display:inline-flex;align-items:center;gap:7px;background:var(--surface);color:var(--button);border:1px solid var(--border);box-shadow:0 6px 18px rgba(0,0,0,.10);font-size:13.5px;font-weight:800;white-space:nowrap}
 .addFolderFab:active{transform:scale(.95)}
 
@@ -250,6 +254,16 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
       </div>
     </section>
 
+    <!-- Fallback for when auto-close isn't available (not running inside Telegram, e.g. a plain browser tab) -->
+    <section id="screen-duplicate" class="screen">
+      <div class="centerScreen">
+        <div class="icon warningIcon">📱</div>
+        <h2>Already open</h2>
+        <p class="message">Clip Sense is already open in another tab on this device. Switch to that tab, or continue here to take over.</p>
+        <button id="takeOverBtn">Continue here anyway</button>
+      </div>
+    </section>
+
     <!-- Home screen -->
     <section id="screen-home" class="screen">
       <div class="homeGrid">
@@ -267,10 +281,6 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
     <!-- Movie/Series Identifier -->
     <section id="screen-identify" class="screen">
       <div class="formCard">
-        <div class="downloadHeader">
-          <button type="button" id="identifyClearAllBtn" class="clearAllBtn">Clear all</button>
-        </div>
-
         <label for="identify-url-input">Video link</label>
         <div class="clearableInputWrap">
           <input type="text" id="identify-url-input" placeholder="Paste a Facebook, Instagram, YouTube or X link">
@@ -293,10 +303,10 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 
         <div id="tab-download" class="tabPane active">
           <div class="downloadHeader">
+            <label for="url-input">Video link</label>
             <button type="button" id="clearAllBtn" class="clearAllBtn">Clear all</button>
           </div>
 
-          <label for="url-input">Video link</label>
           <div class="clearableInputWrap">
             <input type="text" id="url-input" placeholder="Paste a Facebook, Instagram, YouTube or X link">
             <button type="button" id="clearUrlBtn" class="clearFieldBtn hidden" aria-label="Clear video link">✕</button>
@@ -321,12 +331,20 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
         </div>
 
         <div id="tab-settings" class="tabPane">
-          <div class="settingsHeader">
-            <button type="button" id="reloadFoldersBtn" class="addFolderFab" aria-label="Reload folders" style="margin-right:8px">
+          <p class="settingsHint">Add a new shared Google Drive folder</p>
+          <button type="button" id="openAddFolderBtn" class="addFolderFab" aria-label="Add folder">
+            <svg viewBox="0 0 24 22" width="18" height="16" aria-hidden="true">
+              <polygon points="12,2 22,20 12,14" fill="#4285F4"/>
+              <polygon points="22,20 2,20 12,14" fill="#34A853"/>
+              <polygon points="2,20 12,2 12,14" fill="#FBBC05"/>
+            </svg>
+            <span>Add folder</span>
+          </button>
+
+          <div class="folderListHeader">
+            <label style="margin:0">Your folders</label>
+            <button type="button" id="reloadFoldersBtn" class="addFolderFab" aria-label="Reload folders">
               <span>🔄</span><span>Reload</span>
-            </button>
-            <button type="button" id="openAddFolderBtn" class="addFolderFab" aria-label="Add folder">
-              <span>➕</span><span>Add folder</span>
             </button>
           </div>
           <div class="folder-tree" id="manage-folder-list"></div>
@@ -469,12 +487,13 @@ const FEATURE_SCREENS = ['screen-app', 'screen-identify']; // screens reached fr
 const SCREEN_TITLES = {
   'screen-loading': 'Clip Sense',
   'screen-no-username': 'Clip Sense',
+  'screen-duplicate': 'Clip Sense',
   'screen-home': 'Clip Sense',
   'screen-app': 'Video To G-Drive',
   'screen-identify': 'Movie Identifier'
 };
 function showScreen(id) {
-  document.querySelectorAll('#screen-loading, #screen-no-username, #screen-home, #screen-app, #screen-identify').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('#screen-loading, #screen-no-username, #screen-duplicate, #screen-home, #screen-app, #screen-identify').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   document.getElementById('backBtn').classList.toggle('hidden', !FEATURE_SCREENS.includes(id));
   document.getElementById('pageTitle').textContent = SCREEN_TITLES[id] || 'Clip Sense';
@@ -616,7 +635,78 @@ function clearCachedProfile(chatId) {
 }
 
 // ---- Init ----
-window.addEventListener('DOMContentLoaded', init);
+// ---- Single-instance guard (same device) ----
+// Telegram can end up with more than one WebView open for this same Mini
+// App on one device — two quick taps on a bot button, or it left open in
+// one chat while reopened from another. Both instances share localStorage
+// (same origin), so a heartbeat + a storage-event handshake is enough to
+// detect that and let the person pick one, instead of two windows quietly
+// racing each other against the same account.
+const APP_INSTANCE_ID = Math.random().toString(36).slice(2) + '-' + Date.now();
+const INSTANCE_LOCK_KEY = 'cs_active_instance';
+const INSTANCE_HEARTBEAT_MS = 1500;
+const INSTANCE_STALE_MS = 4000; // no heartbeat this old = that instance is gone (closed, crashed, backgrounded)
+let instanceHeartbeatTimer = null;
+let isActiveInstance = false;
+
+function readInstanceLock() {
+  try { return JSON.parse(localStorage.getItem(INSTANCE_LOCK_KEY) || 'null'); } catch (e) { return null; }
+}
+function writeInstanceLock() {
+  localStorage.setItem(INSTANCE_LOCK_KEY, JSON.stringify({ id: APP_INSTANCE_ID, ts: Date.now() }));
+}
+function claimInstanceLock() {
+  isActiveInstance = true;
+  writeInstanceLock();
+  if (instanceHeartbeatTimer) clearInterval(instanceHeartbeatTimer);
+  instanceHeartbeatTimer = setInterval(writeInstanceLock, INSTANCE_HEARTBEAT_MS);
+}
+function yieldToOtherInstance() {
+  isActiveInstance = false;
+  if (instanceHeartbeatTimer) clearInterval(instanceHeartbeatTimer);
+  instanceHeartbeatTimer = null;
+  showScreen('screen-duplicate');
+}
+function startInstanceGuard() {
+  const existing = readInstanceLock();
+  const stale = !existing || (Date.now() - existing.ts) > INSTANCE_STALE_MS;
+  if (existing && !stale && existing.id !== APP_INSTANCE_ID) {
+    // Another instance is alive right now. Inside Telegram, just close this
+    // one — Telegram drops the user back to whichever WebView is already
+    // open, so it never even shows a screen. Outside Telegram (a plain
+    // browser tab, e.g. while testing) there's no equivalent — a page can't
+    // force the browser to switch to another tab — so that's the one case
+    // screen-duplicate's manual fallback still matters for.
+    if (tg && typeof tg.close === 'function') {
+      tg.close();
+    } else {
+      showScreen('screen-duplicate');
+    }
+    return false;
+  }
+  claimInstanceLock();
+  return true;
+}
+// If some other window claims the lock while this one is the active
+// instance (e.g. someone tapped "Use this window instead" over there),
+// back off instead of both windows fighting over the same account.
+window.addEventListener('storage', (e) => {
+  if (e.key !== INSTANCE_LOCK_KEY || !e.newValue) return;
+  let lock;
+  try { lock = JSON.parse(e.newValue); } catch (err) { return; }
+  if (isActiveInstance && lock.id !== APP_INSTANCE_ID) yieldToOtherInstance();
+});
+window.addEventListener('pagehide', () => {
+  if (isActiveInstance) localStorage.removeItem(INSTANCE_LOCK_KEY); // faster handoff than waiting out the stale window
+});
+document.getElementById('takeOverBtn').onclick = () => {
+  claimInstanceLock();
+  init();
+};
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (startInstanceGuard()) init();
+});
 
 async function init() {
   const params = new URLSearchParams(window.location.search);
@@ -813,7 +903,6 @@ function clearIdentifyField() {
   document.getElementById('clearIdentifyUrlBtn').classList.add('hidden');
   updateIdentifyEnabled();
 }
-document.getElementById('identifyClearAllBtn').onclick = clearIdentifyField;
 
 document.getElementById('identify-btn').onclick = async () => {
   clearError('identify-error');
