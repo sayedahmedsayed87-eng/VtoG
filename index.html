@@ -635,108 +635,114 @@ function clearCachedProfile(chatId) {
 }
 
 // ---- Init ----
-// ---- Single-instance guard (same device) ----
-// Telegram can end up with more than one WebView open for this same Mini
-// App on one device — two quick taps on a bot button, or it left open in
-// one chat while reopened from another. Both instances share localStorage
-// (same origin), so a heartbeat + a storage-event handshake is enough to
-// detect that and let the person pick one, instead of two windows quietly
-// racing each other against the same account.
+// ---- Single-instance guard: the NEWEST launch wins ----
+// Telegram opens a brand-new WebView (a new "tab") for every entry point:
+// bot buttons, shared links, the attach/menu button, the chat-list button.
+// A page can't close or focus another tab, but every tab CAN close itself.
+// So each launch stamps a lock saying "I'm the newest", and every older tab
+// that notices a newer stamp calls tg.close() on itself. The new launch is
+// the one that carries the fresh deep link (?url=...&screen=...), so it must
+// be the survivor — never the other way round.
+//
+// The stamp is written to two places:
+//  - localStorage + 'storage' events: instant, works while the old tab's JS is running.
+//  - Telegram CloudStorage: backup in case WebViews don't share localStorage.
+// Suspended background tabs can't run code, so they close themselves the
+// moment Telegram wakes them (visibilitychange / pageshow / focus).
 const APP_INSTANCE_ID = Math.random().toString(36).slice(2) + '-' + Date.now();
 const INSTANCE_LOCK_KEY = 'cs_active_instance';
-const INSTANCE_HEARTBEAT_MS = 1500;
-const INSTANCE_STALE_MS = 4000; // no heartbeat this old = that instance is gone (closed, crashed, backgrounded)
-let instanceHeartbeatTimer = null;
-let isActiveInstance = false;
+const INSTANCE_LOCAL_POLL_MS = 1500;
+const INSTANCE_CLOUD_POLL_MS = 4500;
+let instanceStartedAt = Date.now();
+let instanceRetired = false;
+let instanceLocalTimer = null;
+let instanceCloudTimer = null;
 
-function readInstanceLock() {
-  try { return JSON.parse(localStorage.getItem(INSTANCE_LOCK_KEY) || 'null'); } catch (e) { return null; }
+const hasCloudStorage = !!(tg && tg.CloudStorage && typeof tg.isVersionAtLeast === 'function' && tg.isVersionAtLeast('6.9'));
+// CloudStorage is per-account, so it's shared across devices. Tag the stamp
+// with a device fingerprint so opening the app on a laptop never closes the phone.
+const DEVICE_FP = [navigator.userAgent, screen.width + 'x' + screen.height, (tg && tg.platform) || ''].join('|');
+
+function parseInstanceLock(raw) {
+  try {
+    const l = JSON.parse(raw || 'null');
+    return (l && l.id && l.ts) ? l : null;
+  } catch (e) { return null; }
 }
-function writeInstanceLock() {
-  localStorage.setItem(INSTANCE_LOCK_KEY, JSON.stringify({ id: APP_INSTANCE_ID, ts: Date.now() }));
+function isNewerInstance(lock) {
+  if (!lock || lock.id === APP_INSTANCE_ID) return false;
+  if (lock.dev && lock.dev !== DEVICE_FP) return false; // another device — leave it alone
+  return lock.ts > instanceStartedAt || (lock.ts === instanceStartedAt && lock.id > APP_INSTANCE_ID);
 }
 function claimInstanceLock() {
-  isActiveInstance = true;
-  writeInstanceLock();
-  if (instanceHeartbeatTimer) clearInterval(instanceHeartbeatTimer);
-  instanceHeartbeatTimer = setInterval(writeInstanceLock, INSTANCE_HEARTBEAT_MS);
-}
-function yieldToOtherInstance() {
-  isActiveInstance = false;
-  if (instanceHeartbeatTimer) clearInterval(instanceHeartbeatTimer);
-  instanceHeartbeatTimer = null;
-  showScreen('screen-duplicate');
-}
-function startInstanceGuard() {
-  const existing = readInstanceLock();
-  const stale = !existing || (Date.now() - existing.ts) > INSTANCE_STALE_MS;
-  if (existing && !stale && existing.id !== APP_INSTANCE_ID) {
-    // Another instance is alive right now. Inside Telegram, just close this
-    // one — Telegram drops the user back to whichever WebView is already
-    // open, so it never even shows a screen. Outside Telegram (a plain
-    // browser tab, e.g. while testing) there's no equivalent — a page can't
-    // force the browser to switch to another tab — so that's the one case
-    // screen-duplicate's manual fallback still matters for.
-    if (tg && typeof tg.close === 'function') {
-      tg.close();
-    } else {
-      showScreen('screen-duplicate');
-    }
-    return false;
+  instanceRetired = false;
+  const value = JSON.stringify({ id: APP_INSTANCE_ID, ts: instanceStartedAt, dev: DEVICE_FP });
+  try { localStorage.setItem(INSTANCE_LOCK_KEY, value); } catch (e) {}
+  if (hasCloudStorage) {
+    try { tg.CloudStorage.setItem(INSTANCE_LOCK_KEY, value, function () {}); } catch (e) {}
   }
-  claimInstanceLock();
-  return true;
 }
-// If some other window claims the lock while this one is the active
-// instance (e.g. someone tapped "Use this window instead" over there),
-// back off instead of both windows fighting over the same account.
+function retireThisInstance() {
+  if (instanceRetired) return;
+  instanceRetired = true;
+  if (instanceLocalTimer) clearInterval(instanceLocalTimer);
+  if (instanceCloudTimer) clearInterval(instanceCloudTimer);
+  instanceLocalTimer = instanceCloudTimer = null;
+  if (tg && typeof tg.close === 'function') {
+    tg.close();
+  } else {
+    // Plain browser tab (testing): a page can't close itself or focus
+    // another tab, so fall back to the manual screen.
+    showScreen('screen-duplicate');
+  }
+}
+function checkLocalForNewerInstance() {
+  if (instanceRetired) return;
+  let raw = null;
+  try { raw = localStorage.getItem(INSTANCE_LOCK_KEY); } catch (e) {}
+  if (isNewerInstance(parseInstanceLock(raw))) retireThisInstance();
+}
+function checkCloudForNewerInstance() {
+  if (instanceRetired || !hasCloudStorage) return;
+  try {
+    tg.CloudStorage.getItem(INSTANCE_LOCK_KEY, function (err, value) {
+      if (!err && isNewerInstance(parseInstanceLock(value))) retireThisInstance();
+    });
+  } catch (e) {}
+}
+function checkForNewerInstance() {
+  checkLocalForNewerInstance();
+  checkCloudForNewerInstance();
+}
+function startInstanceWatch() {
+  if (instanceLocalTimer) clearInterval(instanceLocalTimer);
+  if (instanceCloudTimer) clearInterval(instanceCloudTimer);
+  instanceLocalTimer = setInterval(checkLocalForNewerInstance, INSTANCE_LOCAL_POLL_MS);
+  instanceCloudTimer = hasCloudStorage ? setInterval(checkCloudForNewerInstance, INSTANCE_CLOUD_POLL_MS) : null;
+}
+
+// Instant path: another tab just stamped localStorage.
 window.addEventListener('storage', (e) => {
   if (e.key !== INSTANCE_LOCK_KEY || !e.newValue) return;
-  let lock;
-  try { lock = JSON.parse(e.newValue); } catch (err) { return; }
-  if (isActiveInstance && lock.id !== APP_INSTANCE_ID) yieldToOtherInstance();
+  if (isNewerInstance(parseInstanceLock(e.newValue))) retireThisInstance();
 });
-window.addEventListener('pagehide', () => {
-  if (isActiveInstance) localStorage.removeItem(INSTANCE_LOCK_KEY); // faster handoff than waiting out the stale window
-});
-// pagehide/beforeunload only fire on a real navigation/unload — a WebView
-// that gets closed by swipe, by tg.close(), or by the user switching to
-// another chat can just get SUSPENDED instead of destroyed, meaning its JS
-// (heartbeat interval included) keeps running in the background. That's
-// what made the lock look permanently fresh and caused every real reopen to
-// see a "duplicate" and immediately self-close. visibilitychange is fired
-// far more reliably for exactly this kind of backgrounding, so it's used
-// here to actually stop the heartbeat and drop the lock the moment this
-// instance is no longer the one on screen — not just on a clean unload.
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    if (instanceHeartbeatTimer) { clearInterval(instanceHeartbeatTimer); instanceHeartbeatTimer = null; }
-    if (isActiveInstance) {
-      isActiveInstance = false;
-      localStorage.removeItem(INSTANCE_LOCK_KEY);
-    }
-  } else if (!isActiveInstance) {
-    // Coming back to the foreground (e.g. the user briefly switched chats
-    // without fully closing this one). Re-claim if nothing else has taken
-    // over in the meantime; otherwise yield rather than forcing a conflict
-    // — this path doesn't auto tg.close(), since abruptly closing an app
-    // the user is actively looking at again would be jarring.
-    const existing = readInstanceLock();
-    const stale = !existing || (Date.now() - existing.ts) > INSTANCE_STALE_MS;
-    if (existing && !stale && existing.id !== APP_INSTANCE_ID) {
-      yieldToOtherInstance();
-    } else {
-      claimInstanceLock();
-    }
-  }
-});
+// Wake-up paths: a background WebView that was frozen resumes here and
+// discovers it has been superseded before the user can interact with it.
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForNewerInstance(); });
+window.addEventListener('pageshow', checkForNewerInstance);
+window.addEventListener('focus', checkForNewerInstance);
+
 document.getElementById('takeOverBtn').onclick = () => {
+  instanceStartedAt = Date.now(); // become the newest again
   claimInstanceLock();
+  startInstanceWatch();
   init();
 };
 
 window.addEventListener('DOMContentLoaded', () => {
-  if (startInstanceGuard()) init();
+  claimInstanceLock();   // this launch is now the newest; older tabs will close themselves
+  startInstanceWatch();
+  init();
 });
 
 async function init() {
