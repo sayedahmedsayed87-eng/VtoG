@@ -699,6 +699,37 @@ window.addEventListener('storage', (e) => {
 window.addEventListener('pagehide', () => {
   if (isActiveInstance) localStorage.removeItem(INSTANCE_LOCK_KEY); // faster handoff than waiting out the stale window
 });
+// pagehide/beforeunload only fire on a real navigation/unload — a WebView
+// that gets closed by swipe, by tg.close(), or by the user switching to
+// another chat can just get SUSPENDED instead of destroyed, meaning its JS
+// (heartbeat interval included) keeps running in the background. That's
+// what made the lock look permanently fresh and caused every real reopen to
+// see a "duplicate" and immediately self-close. visibilitychange is fired
+// far more reliably for exactly this kind of backgrounding, so it's used
+// here to actually stop the heartbeat and drop the lock the moment this
+// instance is no longer the one on screen — not just on a clean unload.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (instanceHeartbeatTimer) { clearInterval(instanceHeartbeatTimer); instanceHeartbeatTimer = null; }
+    if (isActiveInstance) {
+      isActiveInstance = false;
+      localStorage.removeItem(INSTANCE_LOCK_KEY);
+    }
+  } else if (!isActiveInstance) {
+    // Coming back to the foreground (e.g. the user briefly switched chats
+    // without fully closing this one). Re-claim if nothing else has taken
+    // over in the meantime; otherwise yield rather than forcing a conflict
+    // — this path doesn't auto tg.close(), since abruptly closing an app
+    // the user is actively looking at again would be jarring.
+    const existing = readInstanceLock();
+    const stale = !existing || (Date.now() - existing.ts) > INSTANCE_STALE_MS;
+    if (existing && !stale && existing.id !== APP_INSTANCE_ID) {
+      yieldToOtherInstance();
+    } else {
+      claimInstanceLock();
+    }
+  }
+});
 document.getElementById('takeOverBtn').onclick = () => {
   claimInstanceLock();
   init();
