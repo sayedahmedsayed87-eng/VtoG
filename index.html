@@ -636,60 +636,112 @@ function clearCachedProfile(chatId) {
 
 // ---- Init ----
 // ---- Single-instance guard: the NEWEST launch wins ----
-// Telegram opens a brand-new WebView (a new "tab") for every entry point:
-// bot buttons, shared links, the attach/menu button, the chat-list button.
+// Telegram opens a brand-new WebView (a new "tab") for every entry point.
 // A page can't close or focus another tab, but every tab CAN close itself.
-// So each launch stamps a lock saying "I'm the newest", and every older tab
-// that notices a newer stamp calls tg.close() on itself. The new launch is
-// the one that carries the fresh deep link (?url=...&screen=...), so it must
-// be the survivor — never the other way round.
+// So each launch stamps "I'm the newest" and every older tab that notices a
+// newer stamp calls tg.close() on itself. The new launch carries the fresh
+// deep link (?url=...&screen=...), so it must be the survivor.
 //
-// The stamp is written to two places:
-//  - localStorage + 'storage' events: instant, works while the old tab's JS is running.
-//  - Telegram CloudStorage: backup in case WebViews don't share localStorage.
-// Suspended background tabs can't run code, so they close themselves the
-// moment Telegram wakes them (visibilitychange / pageshow / focus).
+// (The previous version deleted its lock whenever the tab went to the
+// background, so a new launch never saw an existing tab and all of them stayed.)
+//
+// The stamp travels over every channel that might connect two WebViews:
+//  - localStorage + 'storage' event   (instant, if the WebViews share storage)
+//  - BroadcastChannel                 (instant, same condition)
+//  - Telegram DeviceStorage (9.0+) or CloudStorage (6.9+)  (polled; works even
+//    if the WebViews don't share browser storage)
+// Tap the version label in the footer 5 times to see a live diagnostics panel.
+const GUARD_BUILD = 'guard-r2';
 const APP_INSTANCE_ID = Math.random().toString(36).slice(2) + '-' + Date.now();
+const ME = APP_INSTANCE_ID.split('-')[0].slice(0, 4);
 const INSTANCE_LOCK_KEY = 'cs_active_instance';
-const INSTANCE_LOCAL_POLL_MS = 1500;
-const INSTANCE_CLOUD_POLL_MS = 4500;
+const GUARD_LOG_KEY = 'cs_guard_log';
+const INSTANCE_LOCAL_POLL_MS = 1000;
+const INSTANCE_STORE_POLL_MS = 3000;
 let instanceStartedAt = Date.now();
 let instanceRetired = false;
 let instanceLocalTimer = null;
-let instanceCloudTimer = null;
+let instanceStoreTimer = null;
+let guardBc = null;
+const seenPeers = {};
+const guardDbg = { lastLocal: '-', lastStore: '-', bc: 'no' };
 
-const hasCloudStorage = !!(tg && tg.CloudStorage && typeof tg.isVersionAtLeast === 'function' && tg.isVersionAtLeast('6.9'));
-// CloudStorage is per-account, so it's shared across devices. Tag the stamp
-// with a device fingerprint so opening the app on a laptop never closes the phone.
+const sharedStore = (function () {
+  if (!tg || typeof tg.isVersionAtLeast !== 'function') return null;
+  try {
+    if (tg.DeviceStorage && tg.isVersionAtLeast('9.0')) return { name: 'device', s: tg.DeviceStorage };
+    if (tg.CloudStorage && tg.isVersionAtLeast('6.9')) return { name: 'cloud', s: tg.CloudStorage };
+  } catch (e) {}
+  return null;
+})();
+// CloudStorage is per-account (shared across devices). Tag the stamp with a
+// device fingerprint so opening the app on a laptop never closes the phone.
 const DEVICE_FP = [navigator.userAgent, screen.width + 'x' + screen.height, (tg && tg.platform) || ''].join('|');
 
+// Small log shared through localStorage so ONE screen can show what every tab did.
+function guardLog(msg) {
+  try {
+    const arr = JSON.parse(localStorage.getItem(GUARD_LOG_KEY) || '[]');
+    arr.push([Date.now(), ME, msg]);
+    while (arr.length > 40) arr.shift();
+    localStorage.setItem(GUARD_LOG_KEY, JSON.stringify(arr));
+  } catch (e) {}
+}
+function shortId(id) { return String(id).split('-')[0].slice(0, 4); }
 function parseInstanceLock(raw) {
   try {
     const l = JSON.parse(raw || 'null');
     return (l && l.id && l.ts) ? l : null;
   } catch (e) { return null; }
 }
-function isNewerInstance(lock) {
+function describeLock(l) {
+  if (!l) return 'invalid';
+  return (l.id === APP_INSTANCE_ID ? 'me' : shortId(l.id)) + ' ' + Math.round((Date.now() - l.ts) / 1000) + 's ago';
+}
+function isNewerInstance(lock, source) {
   if (!lock || lock.id === APP_INSTANCE_ID) return false;
-  if (lock.dev && lock.dev !== DEVICE_FP) return false; // another device — leave it alone
+  if (source === 'cloud' && lock.dev && lock.dev !== DEVICE_FP) return false; // another device
   return lock.ts > instanceStartedAt || (lock.ts === instanceStartedAt && lock.id > APP_INSTANCE_ID);
+}
+function handleLock(lock, source) {
+  if (!lock || lock.id === APP_INSTANCE_ID) return;
+  const k = lock.id + '@' + lock.ts + '@' + source;
+  if (!seenPeers[k]) {
+    seenPeers[k] = 1;
+    guardLog('saw ' + shortId(lock.id) + ' via ' + source + (isNewerInstance(lock, source) ? ' (newer)' : ' (older)'));
+  }
+  if (isNewerInstance(lock, source)) retireThisInstance('newer ' + shortId(lock.id) + ' via ' + source);
 }
 function claimInstanceLock() {
   instanceRetired = false;
-  const value = JSON.stringify({ id: APP_INSTANCE_ID, ts: instanceStartedAt, dev: DEVICE_FP });
-  try { localStorage.setItem(INSTANCE_LOCK_KEY, value); } catch (e) {}
-  if (hasCloudStorage) {
-    try { tg.CloudStorage.setItem(INSTANCE_LOCK_KEY, value, function () {}); } catch (e) {}
+  const payload = { id: APP_INSTANCE_ID, ts: instanceStartedAt, dev: DEVICE_FP };
+  const value = JSON.stringify(payload);
+  try { localStorage.setItem(INSTANCE_LOCK_KEY, value); } catch (e) { guardLog('localStorage write failed'); }
+  if (guardBc) { try { guardBc.postMessage(payload); } catch (e) {} }
+  if (sharedStore) {
+    try {
+      sharedStore.s.setItem(INSTANCE_LOCK_KEY, value, function (err) {
+        if (err) guardLog(sharedStore.name + ' write error: ' + err);
+      });
+    } catch (e) { guardLog(sharedStore.name + ' write threw'); }
   }
+  const screenParam = new URLSearchParams(window.location.search).get('screen');
+  guardLog('launched, screen=' + (screenParam || 'none'));
 }
-function retireThisInstance() {
+function retireThisInstance(reason) {
   if (instanceRetired) return;
   instanceRetired = true;
   if (instanceLocalTimer) clearInterval(instanceLocalTimer);
-  if (instanceCloudTimer) clearInterval(instanceCloudTimer);
-  instanceLocalTimer = instanceCloudTimer = null;
+  if (instanceStoreTimer) clearInterval(instanceStoreTimer);
+  instanceLocalTimer = instanceStoreTimer = null;
+  guardLog('closing: ' + reason);
   if (tg && typeof tg.close === 'function') {
     tg.close();
+    // Still here a moment later? Then close() didn't take — don't leave a live duplicate on screen.
+    setTimeout(function () {
+      guardLog('close() did not close this tab');
+      showScreen('screen-duplicate');
+    }, 1200);
   } else {
     // Plain browser tab (testing): a page can't close itself or focus
     // another tab, so fall back to the manual screen.
@@ -700,37 +752,100 @@ function checkLocalForNewerInstance() {
   if (instanceRetired) return;
   let raw = null;
   try { raw = localStorage.getItem(INSTANCE_LOCK_KEY); } catch (e) {}
-  if (isNewerInstance(parseInstanceLock(raw))) retireThisInstance();
+  const lock = parseInstanceLock(raw);
+  guardDbg.lastLocal = raw ? describeLock(lock) : 'empty';
+  handleLock(lock, 'localStorage');
 }
-function checkCloudForNewerInstance() {
-  if (instanceRetired || !hasCloudStorage) return;
+function checkStoreForNewerInstance() {
+  if (instanceRetired || !sharedStore) return;
   try {
-    tg.CloudStorage.getItem(INSTANCE_LOCK_KEY, function (err, value) {
-      if (!err && isNewerInstance(parseInstanceLock(value))) retireThisInstance();
+    sharedStore.s.getItem(INSTANCE_LOCK_KEY, function (err, value) {
+      const lock = parseInstanceLock(value);
+      guardDbg.lastStore = err ? ('error: ' + err) : (value ? describeLock(lock) : 'empty');
+      if (!err) handleLock(lock, sharedStore.name);
     });
-  } catch (e) {}
+  } catch (e) { guardDbg.lastStore = 'threw'; }
 }
 function checkForNewerInstance() {
   checkLocalForNewerInstance();
-  checkCloudForNewerInstance();
+  checkStoreForNewerInstance();
 }
 function startInstanceWatch() {
   if (instanceLocalTimer) clearInterval(instanceLocalTimer);
-  if (instanceCloudTimer) clearInterval(instanceCloudTimer);
+  if (instanceStoreTimer) clearInterval(instanceStoreTimer);
   instanceLocalTimer = setInterval(checkLocalForNewerInstance, INSTANCE_LOCAL_POLL_MS);
-  instanceCloudTimer = hasCloudStorage ? setInterval(checkCloudForNewerInstance, INSTANCE_CLOUD_POLL_MS) : null;
+  instanceStoreTimer = sharedStore ? setInterval(checkStoreForNewerInstance, INSTANCE_STORE_POLL_MS) : null;
 }
+
+try {
+  if ('BroadcastChannel' in window) {
+    guardBc = new BroadcastChannel('cs_instance');
+    guardDbg.bc = 'yes';
+    guardBc.onmessage = function (e) {
+      const l = e.data;
+      if (l && l.id && l.ts) handleLock(l, 'broadcast');
+    };
+  }
+} catch (e) { guardBc = null; }
 
 // Instant path: another tab just stamped localStorage.
 window.addEventListener('storage', (e) => {
   if (e.key !== INSTANCE_LOCK_KEY || !e.newValue) return;
-  if (isNewerInstance(parseInstanceLock(e.newValue))) retireThisInstance();
+  handleLock(parseInstanceLock(e.newValue), 'localStorage-event');
 });
-// Wake-up paths: a background WebView that was frozen resumes here and
-// discovers it has been superseded before the user can interact with it.
+// Wake-up paths: a background WebView that resumes discovers it was superseded.
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForNewerInstance(); });
 window.addEventListener('pageshow', checkForNewerInstance);
 window.addEventListener('focus', checkForNewerInstance);
+if (tg && typeof tg.onEvent === 'function') {
+  try { tg.onEvent('activated', checkForNewerInstance); } catch (e) {}
+}
+
+// ---- Diagnostics panel (tap the footer version label 5 times) ----
+function renderGuardDebug() {
+  const box = document.getElementById('guardDebug');
+  if (!box) return;
+  let log = [];
+  try { log = JSON.parse(localStorage.getItem(GUARD_LOG_KEY) || '[]'); } catch (e) {}
+  const t = (ts) => new Date(ts).toTimeString().slice(0, 8);
+  const lines = [
+    'build ' + GUARD_BUILD + '  me=' + ME,
+    'tg ' + (tg ? (tg.version + ' ' + tg.platform + ' active=' + tg.isActive) : 'none'),
+    'store=' + (sharedStore ? sharedStore.name : 'none') + '  broadcast=' + guardDbg.bc,
+    'local lock: ' + guardDbg.lastLocal,
+    'store lock: ' + guardDbg.lastStore,
+    '--- log (shared by all tabs) ---'
+  ].concat(log.slice(-18).map(r => t(r[0]) + ' ' + r[1] + ' ' + r[2]));
+  box.querySelector('pre').textContent = lines.join('\n');
+}
+function toggleGuardDebug() {
+  let box = document.getElementById('guardDebug');
+  if (box) { box.remove(); return; }
+  box = document.createElement('div');
+  box.id = 'guardDebug';
+  box.style.cssText = 'position:fixed;left:8px;right:8px;top:64px;z-index:99999;background:rgba(0,0,0,.92);color:#9f9;' +
+    'font:11px/1.35 monospace;padding:10px;border-radius:10px;max-height:60vh;overflow:auto;';
+  box.innerHTML = '<pre style="margin:0;white-space:pre-wrap;word-break:break-all"></pre>' +
+    '<div style="margin-top:8px;display:flex;gap:8px">' +
+    '<button type="button" id="guardDbgClear" style="flex:1;padding:6px">Clear log</button>' +
+    '<button type="button" id="guardDbgHide" style="flex:1;padding:6px">Hide</button></div>';
+  document.body.appendChild(box);
+  document.getElementById('guardDbgClear').onclick = () => { try { localStorage.removeItem(GUARD_LOG_KEY); } catch (e) {} renderGuardDebug(); };
+  document.getElementById('guardDbgHide').onclick = () => box.remove();
+  renderGuardDebug();
+  const refresh = setInterval(() => { if (!document.getElementById('guardDebug')) clearInterval(refresh); else renderGuardDebug(); }, 1000);
+}
+(function () {
+  let taps = 0, timer = null;
+  const el = document.getElementById('footerVersion');
+  if (!el) return;
+  el.addEventListener('click', () => {
+    taps++;
+    clearTimeout(timer);
+    timer = setTimeout(() => { taps = 0; }, 3000);
+    if (taps >= 5) { taps = 0; toggleGuardDebug(); }
+  });
+})();
 
 document.getElementById('takeOverBtn').onclick = () => {
   instanceStartedAt = Date.now(); // become the newest again
@@ -740,6 +855,8 @@ document.getElementById('takeOverBtn').onclick = () => {
 };
 
 window.addEventListener('DOMContentLoaded', () => {
+  const v = document.getElementById('footerVersion');
+  if (v) v.textContent += ' · ' + GUARD_BUILD; // lets you see at a glance which build is actually loaded
   claimInstanceLock();   // this launch is now the newest; older tabs will close themselves
   startInstanceWatch();
   init();
