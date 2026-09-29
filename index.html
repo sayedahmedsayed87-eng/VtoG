@@ -44,10 +44,10 @@ body{height:100vh;height:100dvh;font-family:-apple-system,BlinkMacSystemFont,"Se
 .headerText{min-width:0}
 .business-name{font-size:clamp(19px,5vw,23px);font-weight:850;line-height:1.25;letter-spacing:-.3px}
 .user-name{margin-top:4px;color:var(--muted);font-size:13px;font-weight:600;line-height:1.4;overflow-wrap:anywhere}
-.header-actions{flex:none}
-.help-fab{flex:none;width:auto;min-height:0;margin:0;padding:9px 14px 9px 12px;border-radius:99px;display:flex;align-items:center;gap:7px;background:var(--surface);color:var(--button);border:1px solid var(--border);box-shadow:0 6px 18px rgba(0,0,0,.10);font-size:13px;font-weight:800;white-space:nowrap}
-.help-fab svg{width:18px;height:18px;flex:none}
-.help-fab:active{transform:scale(.95)}
+.header-actions{flex:none;display:flex;align-items:flex-start;gap:8px}
+.header-fab{flex:none;width:40px;height:40px;min-height:0;margin:2px 0 0;padding:0;border-radius:50%;display:grid;place-items:center;background:var(--surface);color:var(--button);border:1px solid var(--border);box-shadow:0 6px 18px rgba(0,0,0,.10)}
+.header-fab svg{width:20px;height:20px}
+.header-fab:active{transform:scale(.9)}
 
 .main{flex:1;display:flex;flex-direction:column;justify-content:flex-start;padding-top:2px}
 .screen{display:none}
@@ -96,12 +96,25 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .error-text,.formHint-error{color:var(--danger);font-size:12.5px;margin-top:8px;min-height:0}
 .hidden{display:none!important}
 
-.tabs{flex:none;display:flex;gap:6px;margin-top:2px}
-.tab{flex:1;min-height:0;margin:0;padding:11px 8px;border-radius:14px 14px 0 0;background:color-mix(in srgb,var(--muted) 9%,transparent);color:var(--muted);font-size:14px;font-weight:800;position:relative;top:1px;box-shadow:none}
-.tab.active{background:var(--surface);color:var(--button);top:0;border:1px solid var(--border);border-bottom-color:var(--surface)}
-.tabContent{background:var(--surface);border:1px solid var(--border);border-radius:0 16px 16px 16px;padding:16px 16px 18px;flex:1;min-height:0}
-.tabPane{display:none}
-.tabPane.active{display:block}
+/* Settings popup reuses the .help-overlay / .help-inner box (dimmed backdrop + shadow);
+   the folder list scrolls with the popup instead of inside its own scroll box. */
+#manage-folder-list{max-height:none;overflow:visible}
+/* Settings folder tree: compact rows, children indented under their parent */
+.manageTree{display:none;padding:0 0 0 18px}
+.manageTree.open{display:block}
+.treeChildren{display:none;padding-left:18px}
+.treeChildren.open{display:block}
+.treeRow{display:flex;align-items:center;gap:6px;min-height:28px;padding:1px 4px 1px 2px;border-radius:8px;font-size:14px;line-height:1.3}
+.treeRow.expandable{cursor:pointer}
+.treeRow.expandable:active{background:color-mix(in srgb,var(--button) 10%,transparent)}
+.treeArrow{flex:none;width:16px;text-align:center;color:var(--button);font-size:16px;font-weight:900;line-height:1}
+.treeIcon{flex:none;font-size:14px;line-height:1}
+.treeLabel{flex:1;min-width:0;overflow-wrap:anywhere}
+.treeRow.locked .treeLabel{color:var(--muted)}
+.treeCount{flex:none;font-size:11.5px;color:var(--muted)}
+.treeNote{font-size:12.5px;color:var(--muted);padding:6px 8px}
+.treeNote.retry{cursor:pointer;color:var(--button);font-weight:700}
+#settingsOverlay .addFolderFab{box-shadow:none} /* the popup body scrolls, which would clip these buttons' shadows */
 
 .folder-tree{max-height:340px;overflow-y:auto}
 .folderRowWrap{margin:0}
@@ -129,12 +142,11 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .addFolderFab{width:auto;min-height:0;margin:0;padding:9px 14px 9px 12px;border-radius:99px;display:inline-flex;align-items:center;gap:7px;background:var(--surface);color:var(--button);border:1px solid var(--border);box-shadow:0 6px 18px rgba(0,0,0,.10);font-size:13.5px;font-weight:800;white-space:nowrap}
 .addFolderFab:active{transform:scale(.95)}
 
-.manageFolderCard{display:flex;align-items:center;gap:10px;background:color-mix(in srgb,var(--muted) 6%,var(--surface));border:1px solid var(--border);border-radius:14px;padding:9px 10px 9px 13px;margin:8px 0}
-.manageFolderInfo{flex:1;min-width:0}
-.manageFolderName{font-size:16px;font-weight:850;line-height:1.3;overflow-wrap:anywhere}
-.manageFolderCard.locked .manageFolderName{color:var(--muted)}
-.manageFolderSub{font-size:11.5px;color:var(--muted);margin-top:2px}
-.manageFolderActions{flex:none;display:flex;gap:6px}
+.manageFolderItem{margin:0}
+.manageFolderCard{margin:0}
+.manageFolderCard .treeLabel{font-weight:700}
+.manageFolderActions{flex:none;display:flex;gap:4px}
+.manageFolderActions .iconBtn{width:26px;height:26px;border-radius:8px;font-size:13px}
 .iconBtn{width:32px;height:32px;min-height:0;margin:0;padding:0;border-radius:10px;border:0;display:grid;place-items:center;font-size:15px;line-height:1;color:var(--text);background:color-mix(in srgb,var(--muted) 13%,transparent);cursor:pointer}
 .iconBtn:active{transform:scale(.9)}
 
@@ -200,7 +212,6 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
   h2{font-size:18px}
   .message{margin:6px 0 12px}
   button{min-height:44px;margin-top:10px;padding:10px 14px;font-size:14.5px}
-  .tabContent{padding:12px 14px 14px}
 }
 </style>
 </head>
@@ -217,9 +228,11 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
       </div>
     </div>
     <div class="header-actions">
-      <button id="helpFab" type="button" class="help-fab" aria-label="Help">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-        <span>Help</span>
+      <button id="helpFab" type="button" class="header-fab" aria-label="Help">
+        <svg viewBox="5 3.5 14 15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+      </button>
+      <button id="settingsFab" type="button" class="header-fab hidden" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
       </button>
     </div>
   </header>
@@ -306,62 +319,32 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 
     <!-- Main tabbed app -->
     <section id="screen-app" class="screen">
-      <div class="tabs">
-        <button type="button" class="tab active" data-tab="download">Download</button>
-        <button type="button" class="tab" data-tab="settings">Settings</button>
+      <div class="downloadHeader">
+        <label for="url-input">Video link</label>
+        <button type="button" id="clearAllBtn" class="clearAllBtn">Clear all</button>
       </div>
-      <div class="tabContent">
 
-        <div id="tab-download" class="tabPane active">
-          <div class="downloadHeader">
-            <label for="url-input">Video link</label>
-            <button type="button" id="clearAllBtn" class="clearAllBtn">Clear all</button>
-          </div>
-
-          <div class="clearableInputWrap">
-            <input type="text" id="url-input" placeholder="Paste a Facebook, Instagram, YouTube or X link">
-            <button type="button" id="clearUrlBtn" class="clearFieldBtn hidden" aria-label="Clear video link">✕</button>
-          </div>
-
-          <label for="name-input">Save as</label>
-          <div class="nameInputWrap">
-            <input type="text" id="name-input" placeholder="Video name">
-            <button type="button" id="editNameBtn" class="editNameBtn hidden" aria-label="Edit name">✏️</button>
-            <button type="button" id="clearNameBtn" class="clearFieldBtn hidden" aria-label="Clear name">✕</button>
-          </div>
-
-          <label>Destination folder</label>
-          <div id="mainPathPreview" class="pathPreview placeholder">📁 No folder selected yet</div>
-          <button type="button" class="folder-select secondary" id="folder-select-btn">
-            <span class="folder-select-label">📁 Choose a folder</span>
-          </button>
-
-          <div id="main-error" class="error-text hidden"></div>
-
-          <button id="download-btn" disabled>Download</button>
-        </div>
-
-        <div id="tab-settings" class="tabPane">
-          <p class="settingsHint">Add a new shared Google Drive folder</p>
-          <button type="button" id="openAddFolderBtn" class="addFolderFab" aria-label="Add folder">
-            <svg viewBox="0 0 24 22" width="18" height="16" aria-hidden="true">
-              <polygon points="12,2 22,20 12,14" fill="#4285F4"/>
-              <polygon points="22,20 2,20 12,14" fill="#34A853"/>
-              <polygon points="2,20 12,2 12,14" fill="#FBBC05"/>
-            </svg>
-            <span>Add folder</span>
-          </button>
-
-          <div class="folderListHeader">
-            <label style="margin:0">Your folders</label>
-            <button type="button" id="reloadFoldersBtn" class="addFolderFab" aria-label="Reload folders">
-              <span>🔄</span><span>Reload</span>
-            </button>
-          </div>
-          <div class="folder-tree" id="manage-folder-list"></div>
-        </div>
-
+      <div class="clearableInputWrap">
+        <input type="text" id="url-input" placeholder="Paste a Facebook, Instagram, YouTube or X link">
+        <button type="button" id="clearUrlBtn" class="clearFieldBtn hidden" aria-label="Clear video link">✕</button>
       </div>
+
+      <label for="name-input">Save as</label>
+      <div class="nameInputWrap">
+        <input type="text" id="name-input" placeholder="Video name">
+        <button type="button" id="editNameBtn" class="editNameBtn hidden" aria-label="Edit name">✏️</button>
+        <button type="button" id="clearNameBtn" class="clearFieldBtn hidden" aria-label="Clear name">✕</button>
+      </div>
+
+      <label>Destination folder</label>
+      <div id="mainPathPreview" class="pathPreview placeholder">📁 No folder selected yet</div>
+      <button type="button" class="folder-select secondary" id="folder-select-btn">
+        <span class="folder-select-label">📁 Choose a folder</span>
+      </button>
+
+      <div id="main-error" class="error-text hidden"></div>
+
+      <button id="download-btn" disabled>Download</button>
     </section>
 
   </section>
@@ -402,6 +385,35 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
     <h2 id="identifyResultTitle">Video link received</h2>
     <p class="message" id="identifyResultMsg">You'll be notified with the result as soon as the video is identified.</p>
     <button type="button" id="identifyResultCloseBtn">Got it</button>
+  </div>
+</div>
+
+<!-- Settings popup (opened from the gear in the header; sits above every screen) -->
+<div id="settingsOverlay" class="help-overlay hidden">
+  <div class="help-inner">
+    <div class="help-header">
+      <button type="button" class="help-close" id="settingsCloseBtn" aria-label="Close">×</button>
+      <div class="help-title">Settings</div>
+    </div>
+    <div class="help-body">
+      <p class="settingsHint">Add a new shared Google Drive folder</p>
+      <button type="button" id="openAddFolderBtn" class="addFolderFab" aria-label="Add folder">
+        <svg viewBox="0 0 24 22" width="18" height="16" aria-hidden="true">
+          <polygon points="12,2 22,20 12,14" fill="#4285F4"/>
+          <polygon points="22,20 2,20 12,14" fill="#34A853"/>
+          <polygon points="2,20 12,2 12,14" fill="#FBBC05"/>
+        </svg>
+        <span>Add folder</span>
+      </button>
+
+      <div class="folderListHeader">
+        <label style="margin:0">Your folders</label>
+        <button type="button" id="reloadFoldersBtn" class="addFolderFab" aria-label="Reload folders">
+          <span>🔄</span><span>Reload</span>
+        </button>
+      </div>
+      <div class="folder-tree" id="manage-folder-list"></div>
+    </div>
   </div>
 </div>
 
@@ -494,6 +506,7 @@ wireClearButton('new-folder-link', 'clearFolderLinkBtn');
 let currentUsername = '';
 
 // ---- Screen helpers ----
+const SETTINGS_SCREENS = ['screen-home', 'screen-identify', 'screen-app']; // screens that show the ⚙️ gear (everything after sign-in)
 const FEATURE_SCREENS = ['screen-app', 'screen-identify']; // screens reached from Home, get a back button
 const SCREEN_TITLES = {
   'screen-loading': 'Clip Sense',
@@ -508,6 +521,10 @@ function showScreen(id) {
   document.getElementById(id).classList.add('active');
   document.getElementById('backBtn').classList.toggle('hidden', !FEATURE_SCREENS.includes(id));
   document.getElementById('pageTitle').textContent = SCREEN_TITLES[id] || 'Clip Sense';
+  const showGear = SETTINGS_SCREENS.includes(id);
+  document.getElementById('settingsFab').classList.toggle('hidden', !showGear);
+  // Never leave the Settings popup open over a screen that has no gear (e.g. a forced sign-out).
+  if (!showGear && !document.getElementById('settingsOverlay').classList.contains('hidden')) closeSettings();
 }
 function setFooterStatus(text) { document.getElementById('footerStatus').textContent = text; }
 function showError(elementId, message) {
@@ -830,11 +847,8 @@ function currentTaskLink() {
     const el = document.getElementById('identify-url-input');
     val = el ? el.value : '';
   } else if (screenId === 'screen-app') {
-    const activeTab = document.querySelector('#screen-app .tabPane.active');
-    if (activeTab && activeTab.id === 'tab-download') {
-      const el = document.getElementById('url-input');
-      val = el ? el.value : '';
-    }
+    const el = document.getElementById('url-input');
+    val = el ? el.value : '';
   }
   return { screen: screenId, link: normalizeLink(val) };
 }
@@ -1333,13 +1347,12 @@ document.getElementById('identifyResultCloseBtn').onclick = () => {
   }
 };
 
-// ---- Tabs ----
-// Settings tab: re-checks the folder list every few seconds while it's the
-// visible tab. loadManageFolders goes through FolderCache, so most ticks cost
+// ---- Settings popup ----
+// While the popup is open, re-checks the folder list every few seconds. loadManageFolders goes through FolderCache, so most ticks cost
 // nothing: the server is only asked once the cached list is older than
 // FolderCache's freshness window (10 min), or after an add/remove/reload.
 // This loop only runs client-side while the user has the app open and
-// Settings selected — there's no server-side polling when nobody's looking.
+// the popup is open — there's no server-side polling when nobody's looking.
 let manageFoldersRefreshTimer = null;
 const MANAGE_FOLDERS_REFRESH_MS = 8000;
 
@@ -1358,19 +1371,19 @@ function stopManageFoldersRefresh() {
   }
 }
 
-document.querySelectorAll('.tab').forEach(btn => {
-  btn.onclick = () => {
-    document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b === btn));
-    document.querySelectorAll('.tabPane').forEach(p => p.classList.remove('active'));
-    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-    if (btn.dataset.tab === 'settings') {
-      loadManageFolders();
-      startManageFoldersRefresh();
-    } else {
-      stopManageFoldersRefresh();
-    }
-  };
-});
+function openSettings() {
+  openOverlay('settingsOverlay');
+  loadManageFolders();
+  startManageFoldersRefresh();
+}
+function closeSettings() {
+  closeOverlay('settingsOverlay');
+  stopManageFoldersRefresh();
+}
+document.getElementById('settingsFab').onclick = openSettings;
+document.getElementById('settingsCloseBtn').onclick = closeSettings;
+document.getElementById('settingsOverlay').addEventListener('click', function (e) { if (e.target === this) closeSettings(); });
+
 // ---- Download form validation ----
 function updateDownloadEnabled() {
   const url = document.getElementById('url-input').value.trim();
@@ -1482,7 +1495,7 @@ async function loadFolderTree(forceReload) {
     shown = true;
     container.innerHTML = '';
     if (!folders.length) {
-      container.innerHTML = '<div class="emptyNote">No folders yet — add one from Settings.</div>';
+      container.innerHTML = '<div class="emptyNote">No folders yet — add one from Settings (the ⚙️ at the top right).</div>';
       return;
     }
     folders.forEach(f => container.appendChild(buildFolderRow(f, [])));
@@ -1677,7 +1690,7 @@ function updateMainPathPreview(path) {
   btn.classList.remove('secondary');
 }
 
-// ---- Settings tab: manage folders ----
+// ---- Settings popup: manage folders ----
 async function loadManageFolders(forceReload) {
   const container = document.getElementById('manage-folder-list');
   // "Reload" means the whole tree: drop every cached listing, not just this one.
@@ -1687,11 +1700,16 @@ async function loadManageFolders(forceReload) {
   // after add/remove should update the list in place without flashing it.
   // (With a cached list, render() below replaces this in the same tick.)
   const hasContent = container.children.length > 0;
-  if (!hasContent) container.innerHTML = loadingRowHtml('Loading folders…');
+  if (!hasContent) { delete container.dataset.sig; container.innerHTML = loadingRowHtml('Loading folders…'); }
 
   let shown = false;
   const render = folders => {
     shown = true;
+    // The same list is already on screen (e.g. the periodic refresh found
+    // nothing new): leave the DOM alone so an open tree isn't rebuilt.
+    const sig = JSON.stringify(folders);
+    if (!forceReload && container.dataset.sig === sig) return;
+    container.dataset.sig = sig;
     container.innerHTML = '';
     if (!folders.length) {
       container.innerHTML = '<div class="emptyNote">No folders yet — tap "Add folder" above.</div>';
@@ -1707,37 +1725,150 @@ async function loadManageFolders(forceReload) {
     // it as-is — never let a stale-session or server error masquerade as
     // "you have no folders", and never wipe a list that's showing correctly.
     if (hasContent || shown) return;
+    delete container.dataset.sig;
     container.innerHTML = '';
     container.appendChild(buildRetryNote(folderLoadErrorText_(e), () => loadManageFolders(forceReload)));
   }
 }
 
+// ---- Settings folder tree ----
+// Tapping a root folder in Settings opens a compact, indented tree of its
+// subfolders; any subfolder that has children of its own opens the same way.
+// Subfolders come through FolderCache (the same 'child:<id>' entries the
+// folder picker uses), so re-opening a branch is instant. manageExpanded
+// remembers what's open, so a list re-render doesn't collapse the tree.
+const manageExpanded = new Set(); // driveFolderIds currently open in the Settings tree
+
+function subfolderCountText(n) { return n + (n === 1 ? ' subfolder' : ' subfolders'); }
+
+function treeNote(text, onClick) {
+  const el = document.createElement('div');
+  el.className = 'treeNote' + (onClick ? ' retry' : '');
+  el.textContent = text;
+  if (onClick) el.onclick = onClick;
+  return el;
+}
+
+async function loadTreeChildren(folder, box, forceReload) {
+  const node = 'child:' + folder.driveFolderId;
+  if (forceReload) FolderCache.clearNode(chatId, node);
+  box.dataset.loaded = '';
+  box.innerHTML = '';
+  box.appendChild(treeNote('Loading…')); // replaced at once when a cached list exists
+
+  let shown = false;
+  const draw = children => {
+    shown = true;
+    box.innerHTML = '';
+    if (!children.length) {
+      box.appendChild(treeNote('No subfolders found — tap to check again', () => loadTreeChildren(folder, box, true)));
+      return; // not marked loaded, so the next open checks again
+    }
+    children.forEach(c => box.appendChild(buildTreeNode(c)));
+    box.dataset.loaded = '1';
+  };
+
+  try {
+    await FolderCache.load(chatId, node, () => callApi('listChildFolders', { chatId, parentId: folder.driveFolderId }), draw);
+  } catch (e) {
+    if (shown) return; // a background refresh failed, but the cached branch is still showing
+    box.innerHTML = '';
+    box.appendChild(treeNote('Could not load subfolders — tap to retry', () => loadTreeChildren(folder, box, true)));
+  }
+}
+
+// ui = { toggleEl, arrow, icon, count, box } — the same parts for a root card and a nested row.
+function setTreeOpen(folder, open, ui) {
+  if (open) manageExpanded.add(folder.driveFolderId); else manageExpanded.delete(folder.driveFolderId);
+  ui.box.classList.toggle('open', open);
+  ui.arrow.textContent = open ? '⌄' : '›';
+  ui.icon.textContent = open ? '📂' : '📁';
+  ui.count.classList.toggle('hidden', open); // the count only shows while collapsed
+  ui.toggleEl.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open && ui.box.dataset.loaded !== '1') loadTreeChildren(folder, ui.box, false);
+}
+
+function buildTreeNode(folder) {
+  const hasChildren = (folder.childCount || 0) > 0;
+
+  const node = document.createElement('div');
+  node.className = 'treeNode';
+
+  const row = document.createElement('div');
+  row.className = 'treeRow' + (hasChildren ? ' expandable' : '') + (folder.writable === false ? ' locked' : '');
+
+  const arrow = document.createElement('span');
+  arrow.className = 'treeArrow';
+  arrow.textContent = hasChildren ? '›' : '';
+  const icon = document.createElement('span');
+  icon.className = 'treeIcon';
+  icon.textContent = '📁';
+  const label = document.createElement('span');
+  label.className = 'treeLabel';
+  label.textContent = folder.label;
+  const count = document.createElement('span');
+  count.className = 'treeCount';
+  count.textContent = hasChildren ? subfolderCountText(folder.childCount) : '';
+
+  row.appendChild(arrow);
+  row.appendChild(icon);
+  row.appendChild(label);
+  row.appendChild(count);
+  if (folder.writable === false) {
+    const lock = document.createElement('span');
+    lock.className = 'treeCount';
+    lock.textContent = '🔒';
+    lock.title = "This folder isn't shared with Editor access anymore.";
+    row.appendChild(lock);
+  }
+
+  const box = document.createElement('div');
+  box.className = 'treeChildren';
+  node.appendChild(row);
+  node.appendChild(box);
+
+  if (hasChildren) {
+    const ui = { toggleEl: row, arrow, icon, count, box };
+    row.onclick = () => setTreeOpen(folder, !box.classList.contains('open'), ui);
+    if (manageExpanded.has(folder.driveFolderId)) setTreeOpen(folder, true, ui);
+  }
+  return node;
+}
+
 function buildManageFolderCard(folder) {
   const locked = folder.writable === false;
+  const childTotal = folder.childCount || 0;
+  const hasChildren = childTotal > 0;
 
+  const item = document.createElement('div');
+  item.className = 'manageFolderItem';
+
+  // Same compact one-line row as the nested folders below it.
   const card = document.createElement('div');
-  card.className = 'manageFolderCard' + (locked ? ' locked' : '');
+  card.className = 'treeRow manageFolderCard' + (locked ? ' locked' : '') + (hasChildren ? ' expandable' : '');
 
-  const info = document.createElement('div');
-  info.className = 'manageFolderInfo';
+  const arrow = document.createElement('span');
+  arrow.className = 'treeArrow';
+  arrow.textContent = hasChildren ? '›' : ''; // empty spacer otherwise, so names stay aligned
+  const icon = document.createElement('span');
+  icon.className = 'treeIcon';
+  icon.textContent = '📁';
+  const name = document.createElement('span');
+  name.className = 'treeLabel';
+  name.textContent = folder.label;
+  const sub = document.createElement('span');
+  sub.className = 'treeCount';
+  sub.textContent = subfolderCountText(childTotal);
 
-  const name = document.createElement('div');
-  name.className = 'manageFolderName';
-  name.textContent = '📁 ' + folder.label;
-  info.appendChild(name);
-
-  const count = folder.childCount || 0;
-  const sub = document.createElement('div');
-  sub.className = 'manageFolderSub';
-  sub.textContent = count + (count === 1 ? ' subfolder' : ' subfolders');
-  info.appendChild(sub);
-
-  card.appendChild(info);
+  card.appendChild(arrow);
+  card.appendChild(icon);
+  card.appendChild(name);
+  card.appendChild(sub);
 
   if (locked) {
     const lock = document.createElement('span');
-    lock.className = 'lockBadge';
-    lock.textContent = '🔒 Locked';
+    lock.className = 'treeCount';
+    lock.textContent = '🔒';
     lock.title = "This folder isn't shared with Editor access anymore.";
     card.appendChild(lock);
   }
@@ -1762,7 +1893,22 @@ function buildManageFolderCard(folder) {
   actions.appendChild(removeBtn);
 
   card.appendChild(actions);
-  return card;
+  item.appendChild(card);
+
+  const tree = document.createElement('div');
+  tree.className = 'manageTree';
+  item.appendChild(tree);
+
+  if (hasChildren) {
+    const ui = { toggleEl: card, arrow, icon, count: sub, box: tree };
+    // Tapping anywhere on the card (except the 🔗 / 🗑️ buttons) opens or closes the tree.
+    card.onclick = e => {
+      if (e.target.closest('.manageFolderActions')) return;
+      setTreeOpen(folder, !tree.classList.contains('open'), ui);
+    };
+    if (manageExpanded.has(folder.driveFolderId)) setTreeOpen(folder, true, ui);
+  }
+  return item;
 }
 
 function openInDrive(folderId) {
@@ -2036,8 +2182,8 @@ document.getElementById('clearAllBtn').onclick = clearAllFields;
 const HELP_CONTENT = [
   { q: 'How do I download a video?', a: 'Paste a Facebook, Instagram, YouTube or X (Twitter) link, give it a name, choose a destination folder, then tap Download. You can also start this from the Telegram bot by sharing a link directly.' },
   { q: 'Why is the Download button greyed out?', a: 'All three fields — the link, the name, and the destination folder — need to be filled in before the button unlocks.' },
-  { q: 'How do I add a Drive folder?', a: 'Go to Settings and paste a Google Drive folder share link, then tap Add folder. Its name is pulled straight from Drive, and it will then show up when choosing a destination.' },
-  { q: 'How do I remove a folder?', a: 'In Settings, tap Remove next to any folder in your list. This only removes it from this app — it does not delete the folder from Drive.' },
+  { q: 'How do I add a Drive folder?', a: 'Tap the ⚙️ gear at the top right to open Settings, paste a Google Drive folder share link, then tap Add folder. Its name is pulled straight from Drive, and it will then show up when choosing a destination.' },
+  { q: 'How do I remove a folder?', a: 'Open Settings (the ⚙️ gear at the top right) and tap Remove next to any folder in your list. This only removes it from this app — it does not delete the folder from Drive.' },
   { q: 'What happens if I hit my quota?', a: 'Each account has a download quota that resets on a regular period. If you go over it, new downloads are blocked until the next period starts.' }
 ];
 function renderHelpList() {
