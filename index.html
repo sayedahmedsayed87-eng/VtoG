@@ -662,7 +662,7 @@ function clearCachedProfile(chatId) {
 //  - Telegram DeviceStorage (9.0+) or CloudStorage (6.9+)  (polled; works even
 //    if the WebViews don't share browser storage)
 // Tap the version label in the footer 5 times to see a live diagnostics panel.
-const GUARD_BUILD = 'guard-r4';
+const GUARD_BUILD = 'guard-r5';
 const APP_INSTANCE_ID = Math.random().toString(36).slice(2) + '-' + Date.now();
 const ME = APP_INSTANCE_ID.split('-')[0].slice(0, 4);
 const INSTANCE_LOCK_KEY = 'cs_active_instance';
@@ -860,6 +860,14 @@ function decideAndMaybeClose(reason) {
 function renderConflictScreen(link) {
   const el = document.getElementById('conflictLinkText');
   if (el) el.textContent = link;
+}
+// A job just finished and the user tapped "Got it" — a direct tap on the
+// foreground tab, which is exactly the case close() is meant for (unlike the
+// duplicate-tab case above, there's no background-view restriction to fight
+// here, so no retry loop is needed).
+function closeAppAfterSuccess() {
+  guardLog('closing: job submitted successfully');
+  if (tg && typeof tg.close === 'function') tg.close();
 }
 function checkLocalForNewerInstance() {
   if (instanceRetired) return;
@@ -1238,7 +1246,10 @@ document.getElementById('identify-btn').onclick = async () => {
 };
 document.getElementById('identifyResultCloseBtn').onclick = () => {
   closeOverlay('identifyResultOverlay');
-  if (identifySucceeded) clearIdentifyField();
+  if (identifySucceeded) {
+    clearIdentifyField();
+    closeAppAfterSuccess();
+  }
 };
 
 // ---- Tabs ----
@@ -1907,7 +1918,8 @@ document.getElementById('download-btn').onclick = async () => {
 
 document.getElementById('queuedCloseBtn').onclick = () => {
   closeOverlay('queuedOverlay');
-  clearAllFields(); // reset form for the next download
+  clearAllFields(); // in case close() doesn't fire, leave the form ready anyway
+  closeAppAfterSuccess();
 };
 
 // Clears the link, name, and destination folder back to their empty state —
