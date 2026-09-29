@@ -651,7 +651,7 @@ function clearCachedProfile(chatId) {
 //  - Telegram DeviceStorage (9.0+) or CloudStorage (6.9+)  (polled; works even
 //    if the WebViews don't share browser storage)
 // Tap the version label in the footer 5 times to see a live diagnostics panel.
-const GUARD_BUILD = 'guard-r2';
+const GUARD_BUILD = 'guard-r3';
 const APP_INSTANCE_ID = Math.random().toString(36).slice(2) + '-' + Date.now();
 const ME = APP_INSTANCE_ID.split('-')[0].slice(0, 4);
 const INSTANCE_LOCK_KEY = 'cs_active_instance';
@@ -660,8 +660,13 @@ const INSTANCE_LOCAL_POLL_MS = 1000;
 const INSTANCE_STORE_POLL_MS = 3000;
 let instanceStartedAt = Date.now();
 let instanceRetired = false;
+// isStale never resets to false on its own: once we've seen a newer instance,
+// we ARE a duplicate forever, and we keep trying to close on every resume —
+// unlike instanceRetired, which only stops the "is there a newer one" polling.
+let isStale = false;
 let instanceLocalTimer = null;
 let instanceStoreTimer = null;
+let closeRetryTimer = null;
 let guardBc = null;
 const seenPeers = {};
 const guardDbg = { lastLocal: '-', lastStore: '-', bc: 'no' };
@@ -714,6 +719,8 @@ function handleLock(lock, source) {
 }
 function claimInstanceLock() {
   instanceRetired = false;
+  isStale = false;
+  if (closeRetryTimer) { clearInterval(closeRetryTimer); closeRetryTimer = null; }
   const payload = { id: APP_INSTANCE_ID, ts: instanceStartedAt, dev: DEVICE_FP };
   const value = JSON.stringify(payload);
   try { localStorage.setItem(INSTANCE_LOCK_KEY, value); } catch (e) { guardLog('localStorage write failed'); }
@@ -728,25 +735,36 @@ function claimInstanceLock() {
   const screenParam = new URLSearchParams(window.location.search).get('screen');
   guardLog('launched, screen=' + (screenParam || 'none'));
 }
-function retireThisInstance(reason) {
-  if (instanceRetired) return;
-  instanceRetired = true;
-  if (instanceLocalTimer) clearInterval(instanceLocalTimer);
-  if (instanceStoreTimer) clearInterval(instanceStoreTimer);
-  instanceLocalTimer = instanceStoreTimer = null;
-  guardLog('closing: ' + reason);
+function attemptClose(reason) {
+  const activeNote = tg ? (' (active=' + tg.isActive + ')') : '';
+  guardLog('closing' + activeNote + ': ' + reason);
   if (tg && typeof tg.close === 'function') {
     tg.close();
     // Still here a moment later? Then close() didn't take — don't leave a live duplicate on screen.
+    // This is expected while backgrounded: the resume listeners below retry
+    // close() the instant this tab is actually brought to the foreground,
+    // which is when close() has a real chance of taking effect.
     setTimeout(function () {
-      guardLog('close() did not close this tab');
+      guardLog('close() did not close this tab' + (tg ? (' (active=' + tg.isActive + ')') : ''));
       showScreen('screen-duplicate');
-    }, 1200);
+    }, 900);
   } else {
     // Plain browser tab (testing): a page can't close itself or focus
     // another tab, so fall back to the manual screen.
     showScreen('screen-duplicate');
   }
+}
+function retireThisInstance(reason) {
+  if (isStale) return; // already marked; a fresh "even newer" sighting doesn't need re-init
+  isStale = true;
+  instanceRetired = true;
+  if (instanceLocalTimer) clearInterval(instanceLocalTimer);
+  if (instanceStoreTimer) clearInterval(instanceStoreTimer);
+  instanceLocalTimer = instanceStoreTimer = null;
+  attemptClose(reason);
+  // Backup: keep nudging close() every few seconds even with no resume event,
+  // in case this WebView is quietly resumed without firing one on this device.
+  if (!closeRetryTimer) closeRetryTimer = setInterval(function () { attemptClose('periodic retry'); }, 4000);
 }
 function checkLocalForNewerInstance() {
   if (instanceRetired) return;
@@ -793,12 +811,18 @@ window.addEventListener('storage', (e) => {
   if (e.key !== INSTANCE_LOCK_KEY || !e.newValue) return;
   handleLock(parseInstanceLock(e.newValue), 'localStorage-event');
 });
-// Wake-up paths: a background WebView that resumes discovers it was superseded.
-document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForNewerInstance(); });
-window.addEventListener('pageshow', checkForNewerInstance);
-window.addEventListener('focus', checkForNewerInstance);
+// Wake-up paths: a background WebView that resumes either discovers it was
+// superseded, or — if it already knows it's stale — gets another shot at
+// close(), which the logs show can fail silently while not the foreground view.
+function onResume() {
+  if (isStale) { attemptClose('resumed'); return; }
+  checkForNewerInstance();
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) onResume(); });
+window.addEventListener('pageshow', onResume);
+window.addEventListener('focus', onResume);
 if (tg && typeof tg.onEvent === 'function') {
-  try { tg.onEvent('activated', checkForNewerInstance); } catch (e) {}
+  try { tg.onEvent('activated', onResume); } catch (e) {}
 }
 
 // ---- Diagnostics panel (tap the footer version label 5 times) ----
