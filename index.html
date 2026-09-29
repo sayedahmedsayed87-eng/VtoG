@@ -618,8 +618,8 @@ function isErrorResult(r) {
 //
 // localStorage, not PropertiesService: this is purely a per-device,
 // per-browser convenience cache for one person's own session, with no
-// need to be visible or clearable from the server side the way the
-// folder-listing cache is.
+// need to be visible or clearable from the server side (the folder listing
+// cache further down works the same way now).
 function profileCacheKey_(chatId) {
   return 'profile_' + chatId;
 }
@@ -644,6 +644,87 @@ function clearCachedProfile(chatId) {
     localStorage.removeItem(profileCacheKey_(chatId));
   } catch (e) { /* nothing to clean up if storage was never available */ }
 }
+
+// ---- Folder listing cache (per device, localStorage) ----
+//
+// Folder listings used to be cached on the server in Script Properties
+// (shared 500 KB store, 9 KB per value). They're cached here instead: the
+// last listing for each node ('root' or 'child:<driveFolderId>') is kept on
+// this device and shown instantly, then refreshed when it's old.
+//
+//  - cached and younger than FRESH_MS   -> render it, no server call
+//  - cached but older than FRESH_MS     -> render it, refetch in the background,
+//                                          re-render only if the list changed
+//  - no usable cache / older than MAX_AGE_MS / { force: true } -> fetch, then render
+//
+// Empty lists are always revalidated (the server also returns [] when a
+// lookup fails, so [] is never trusted as fresh). Server errors are never
+// cached: load() rejects with err.isServerError = true instead. The
+// server still does every ownership/permission check on every real call —
+// this cache is display-only and is never sent back to it.
+const FolderCache = (() => {
+  const PREFIX = 'fc1:';                   // bump ('fc2:') to drop every device's cache after a format change
+  const FRESH_MS = 10 * 60 * 1000;         // younger than this: no server call
+  const MAX_AGE_MS = 24 * 60 * 60 * 1000;  // older than this: ignore and wait for the server
+
+  const keyFor = (id, node) => PREFIX + id + ':' + node;
+
+  function read(id, node) {
+    try {
+      const raw = localStorage.getItem(keyFor(id, node));
+      if (!raw) return null;
+      const entry = JSON.parse(raw);
+      if (!entry || typeof entry.ts !== 'number' || !Array.isArray(entry.data)) return null;
+      return entry;
+    } catch (e) {
+      return null; // corrupt or storage unavailable — treat as a miss
+    }
+  }
+
+  function write(id, node, data) {
+    try {
+      localStorage.setItem(keyFor(id, node), JSON.stringify({ ts: Date.now(), data }));
+    } catch (e) { /* storage full or blocked — the app just runs uncached */ }
+  }
+
+  function clearNode(id, node) {
+    try { localStorage.removeItem(keyFor(id, node)); } catch (e) { /* ignore */ }
+  }
+
+  // Removes every cached listing (root + all subfolders) for this user.
+  function clearAll(id) {
+    try {
+      const prefix = PREFIX + id + ':';
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && k.indexOf(prefix) === 0) localStorage.removeItem(k);
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  function load(id, node, fetcher, render, opts) {
+    const force = !!(opts && opts.force);
+    const entry = force ? null : read(id, node);
+    const age = entry ? Date.now() - entry.ts : Infinity;
+    const usable = !!entry && age < MAX_AGE_MS;
+
+    if (usable) render(entry.data, { cached: true });
+    if (usable && age < FRESH_MS && entry.data.length > 0) return Promise.resolve(entry.data);
+
+    return Promise.resolve(fetcher()).then(result => {
+      if (!Array.isArray(result)) {
+        const err = new Error((result && result.error) || 'Unexpected response');
+        err.isServerError = true;
+        throw err;
+      }
+      write(id, node, result);
+      if (!usable || JSON.stringify(result) !== JSON.stringify(entry.data)) render(result, { cached: false });
+      return result;
+    });
+  }
+
+  return { load, clearNode, clearAll };
+})();
 
 // ---- Init ----
 // ---- Single-instance guard: the NEWEST launch wins ----
@@ -1253,11 +1334,12 @@ document.getElementById('identifyResultCloseBtn').onclick = () => {
 };
 
 // ---- Tabs ----
-// Settings tab: near-live subfolder counts while it's the visible tab. This
-// is cheap because getChildFolderCount_ on the backend is no longer cached
-// (just one Drive listing call), and this loop only runs client-side while
-// the user actually has the app open and Settings selected — there's no
-// server-side polling or cost incurred when nobody's looking at this tab.
+// Settings tab: re-checks the folder list every few seconds while it's the
+// visible tab. loadManageFolders goes through FolderCache, so most ticks cost
+// nothing: the server is only asked once the cached list is older than
+// FolderCache's freshness window (10 min), or after an add/remove/reload.
+// This loop only runs client-side while the user has the app open and
+// Settings selected — there's no server-side polling when nobody's looking.
 let manageFoldersRefreshTimer = null;
 const MANAGE_FOLDERS_REFRESH_MS = 8000;
 
@@ -1391,26 +1473,35 @@ function updatePathPreview(path) {
 
 async function loadFolderTree(forceReload) {
   const container = document.getElementById('folder-tree');
+  // "Reload" means the whole tree: drop every cached listing, not just this one.
+  if (forceReload) FolderCache.clearAll(chatId);
   container.innerHTML = loadingRowHtml('Loading folders…');
-  let folders;
+
+  let shown = false; // true once a (cached or live) list has been drawn
+  const render = folders => {
+    shown = true;
+    container.innerHTML = '';
+    if (!folders.length) {
+      container.innerHTML = '<div class="emptyNote">No folders yet — add one from Settings.</div>';
+      return;
+    }
+    folders.forEach(f => container.appendChild(buildFolderRow(f, [])));
+  };
+
   try {
-    folders = await callApi('listRootFolders', forceReload ? { chatId, reload: '1' } : { chatId });
+    await FolderCache.load(chatId, 'root', () => callApi('listRootFolders', { chatId }), render);
   } catch (e) {
+    if (shown) return; // a background refresh failed, but the cached list is still on screen
     container.innerHTML = '';
-    container.appendChild(buildRetryNote('Could not load folders.', () => loadFolderTree(forceReload)));
-    return;
+    container.appendChild(buildRetryNote(folderLoadErrorText_(e), () => loadFolderTree(forceReload)));
   }
-  if (isErrorResult(folders)) {
-    container.innerHTML = '';
-    container.appendChild(buildRetryNote(folders.error + (folders.error === 'Unauthorized' ? ' — try reloading the app.' : ''), () => loadFolderTree(forceReload)));
-    return;
-  }
-  container.innerHTML = '';
-  if (!folders.length) {
-    container.innerHTML = '<div class="emptyNote">No folders yet — add one from Settings.</div>';
-    return;
-  }
-  folders.forEach(f => container.appendChild(buildFolderRow(f, [])));
+}
+
+// Message for a failed folder-list load: a server-side error is shown as-is
+// (with a hint for a stale session); a transport failure gets the generic note.
+function folderLoadErrorText_(e) {
+  if (e && e.isServerError) return e.message + (e.message === 'Unauthorized' ? ' — try reloading the app.' : '');
+  return 'Could not load folders.';
 }
 
 // Shared "something didn't load" note with a Try again button, used
@@ -1474,35 +1565,39 @@ function buildFolderRow(folder, parentPath) {
     childrenBox.classList.add('open');
     if (!forceReload && childrenBox.dataset.loaded === '1') return; // already fetched — just reveal it
     childrenBox.innerHTML = loadingRowHtml('Loading…');
-    let children = [];
-    let failed = false;
+    const node = 'child:' + folder.driveFolderId;
+    if (forceReload) FolderCache.clearNode(chatId, node); // reload just this node, not the whole tree
+
+    const renderChildren = (children, failed) => {
+      childrenBox.innerHTML = '';
+      if (children.length) {
+        children.forEach(c => childrenBox.appendChild(buildFolderRow(c, path)));
+        childrenBox.dataset.loaded = '1';
+      } else {
+        // Never leave this silently blank — the arrow only shows up because
+        // a cached count said subfolders exist, so an empty result here is
+        // either a genuine change (they were removed in Drive), a fetch
+        // failure, or a stale cached count disagreeing with Drive. Say which,
+        // and offer a way to bypass the cache and check live rather than
+        // leaving the person guessing whether anything is actually broken.
+        childrenBox.appendChild(buildRetryNote(
+          failed ? 'Could not load subfolders.' : 'No subfolders found here — the folder may have changed in Drive.',
+          () => expandChildren(true)
+        ));
+        // A genuine empty result is left as "loaded" (it's the real current
+        // state); a failure isn't, so the next expand click tries again
+        // instead of being stuck on the retry note forever.
+        childrenBox.dataset.loaded = failed ? '' : '1';
+      }
+    };
+
+    let shown = false;
     try {
-      children = await callApi('listChildFolders', forceReload
-        ? { chatId, parentId: folder.driveFolderId, reload: '1' }
-        : { chatId, parentId: folder.driveFolderId });
-      if (isErrorResult(children)) { failed = true; children = []; }
+      await FolderCache.load(chatId, node,
+        () => callApi('listChildFolders', { chatId, parentId: folder.driveFolderId }),
+        children => { shown = true; renderChildren(children, false); });
     } catch (e) {
-      failed = true;
-    }
-    childrenBox.innerHTML = '';
-    if (children.length) {
-      children.forEach(c => childrenBox.appendChild(buildFolderRow(c, path)));
-      childrenBox.dataset.loaded = '1';
-    } else {
-      // Never leave this silently blank — the arrow only shows up because
-      // a cached count said subfolders exist, so an empty result here is
-      // either a genuine change (they were removed in Drive), a fetch
-      // failure, or a stale cached count disagreeing with Drive. Say which,
-      // and offer a way to bypass the cache and check live rather than
-      // leaving the person guessing whether anything is actually broken.
-      childrenBox.appendChild(buildRetryNote(
-        failed ? 'Could not load subfolders.' : 'No subfolders found here — the folder may have changed in Drive.',
-        () => expandChildren(true)
-      ));
-      // A genuine empty result is left uncached-in-DOM as "loaded" (it's
-      // the real current state); a failure isn't, so the next expand click
-      // tries again instead of being stuck on the retry note forever.
-      childrenBox.dataset.loaded = failed ? '' : '1';
+      if (!shown) renderChildren([], true); // failed with nothing cached to show
     }
   }
 
@@ -1585,39 +1680,36 @@ function updateMainPathPreview(path) {
 // ---- Settings tab: manage folders ----
 async function loadManageFolders(forceReload) {
   const container = document.getElementById('manage-folder-list');
+  // "Reload" means the whole tree: drop every cached listing, not just this one.
+  if (forceReload) FolderCache.clearAll(chatId);
   // Only show the spinner when there's genuinely nothing on screen yet —
   // a background refresh, a re-entry into this tab, or a refresh right
   // after add/remove should update the list in place without flashing it.
+  // (With a cached list, render() below replaces this in the same tick.)
   const hasContent = container.children.length > 0;
   if (!hasContent) container.innerHTML = loadingRowHtml('Loading folders…');
 
-  let folders;
+  let shown = false;
+  const render = folders => {
+    shown = true;
+    container.innerHTML = '';
+    if (!folders.length) {
+      container.innerHTML = '<div class="emptyNote">No folders yet — tap "Add folder" above.</div>';
+      return;
+    }
+    folders.forEach(f => container.appendChild(buildManageFolderCard(f)));
+  };
+
   try {
-    folders = await callApi('listRootFolders', forceReload ? { chatId, reload: '1' } : { chatId });
+    await FolderCache.load(chatId, 'root', () => callApi('listRootFolders', { chatId }), render);
   } catch (e) {
-    if (!hasContent) {
-      container.innerHTML = '';
-      container.appendChild(buildRetryNote('Could not load folders.', () => loadManageFolders(forceReload)));
-    }
-    return; // a refresh that fails while something's already on screen just leaves it as-is
+    // A refresh that fails while something's already on screen just leaves
+    // it as-is — never let a stale-session or server error masquerade as
+    // "you have no folders", and never wipe a list that's showing correctly.
+    if (hasContent || shown) return;
+    container.innerHTML = '';
+    container.appendChild(buildRetryNote(folderLoadErrorText_(e), () => loadManageFolders(forceReload)));
   }
-
-  if (isErrorResult(folders)) {
-    // Never let a stale-session or server error masquerade as "you have no
-    // folders" — and never wipe a list that's already showing correctly.
-    if (!hasContent) {
-      container.innerHTML = '';
-      container.appendChild(buildRetryNote(folders.error + (folders.error === 'Unauthorized' ? ' — try reloading the app.' : ''), () => loadManageFolders(forceReload)));
-    }
-    return;
-  }
-
-  container.innerHTML = '';
-  if (!folders.length) {
-    container.innerHTML = '<div class="emptyNote">No folders yet — tap "Add folder" above.</div>';
-    return;
-  }
-  folders.forEach(f => container.appendChild(buildManageFolderCard(f)));
 }
 
 function buildManageFolderCard(folder) {
@@ -1712,6 +1804,7 @@ document.getElementById('removeConfirmBtn').onclick = async () => {
   try {
     await callApi('removeFolder', { chatId, folderId: folder.driveFolderId });
   } catch (e) { /* ignore, list refresh will show current state */ }
+  FolderCache.clearAll(chatId); // the tree changed (or may have) — drop every cached listing
 
   setButtonLoading(confirmBtn, false);
   cancelBtn.disabled = false;
@@ -1858,6 +1951,7 @@ document.getElementById('add-folder-btn').onclick = async () => {
   try {
     result = await callApi('addFolder', { chatId, folderId });
   } catch (e) {
+    FolderCache.clearAll(chatId); // the add may have landed even though the reply didn't
     setButtonLoading(btn, false);
     showError('add-folder-error', 'Could not reach the server (' + (e && e.message ? e.message : 'unknown error') + ').');
     updateAddFolderEnabled();
@@ -1880,6 +1974,7 @@ document.getElementById('add-folder-btn').onclick = async () => {
   setButtonLoading(btn, false);
   closeOverlay('addFolderOverlay');
   resetAddFolderModal();
+  FolderCache.clearAll(chatId); // the tree changed — drop every cached listing
   loadManageFolders();
 };
 document.getElementById('download-btn').onclick = async () => {
