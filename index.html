@@ -264,6 +264,17 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
       </div>
     </section>
 
+    <!-- Shown instead of auto-closing when this tab has a different unfinished link than the newest tab -->
+    <section id="screen-conflict" class="screen">
+      <div class="centerScreen">
+        <div class="icon warningIcon">📝</div>
+        <h2>Unfinished link here</h2>
+        <p class="message">This tab still has <strong id="conflictLinkText"></strong> waiting, which isn't what's in your newest tab. Closing this one would lose it.</p>
+        <button id="conflictKeepBtn">Keep working here</button>
+        <button id="conflictDiscardBtn" class="secondary">Discard it & use newest tab</button>
+      </div>
+    </section>
+
     <!-- Home screen -->
     <section id="screen-home" class="screen">
       <div class="homeGrid">
@@ -493,7 +504,7 @@ const SCREEN_TITLES = {
   'screen-identify': 'Movie Identifier'
 };
 function showScreen(id) {
-  document.querySelectorAll('#screen-loading, #screen-no-username, #screen-duplicate, #screen-home, #screen-app, #screen-identify').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('#screen-loading, #screen-no-username, #screen-duplicate, #screen-conflict, #screen-home, #screen-app, #screen-identify').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   document.getElementById('backBtn').classList.toggle('hidden', !FEATURE_SCREENS.includes(id));
   document.getElementById('pageTitle').textContent = SCREEN_TITLES[id] || 'Clip Sense';
@@ -651,10 +662,11 @@ function clearCachedProfile(chatId) {
 //  - Telegram DeviceStorage (9.0+) or CloudStorage (6.9+)  (polled; works even
 //    if the WebViews don't share browser storage)
 // Tap the version label in the footer 5 times to see a live diagnostics panel.
-const GUARD_BUILD = 'guard-r3';
+const GUARD_BUILD = 'guard-r4';
 const APP_INSTANCE_ID = Math.random().toString(36).slice(2) + '-' + Date.now();
 const ME = APP_INSTANCE_ID.split('-')[0].slice(0, 4);
 const INSTANCE_LOCK_KEY = 'cs_active_instance';
+const TASK_KEY = 'cs_active_task'; // the link currently on-screen in whichever tab currently owns the lock
 const GUARD_LOG_KEY = 'cs_guard_log';
 const INSTANCE_LOCAL_POLL_MS = 1000;
 const INSTANCE_STORE_POLL_MS = 3000;
@@ -668,6 +680,11 @@ let instanceLocalTimer = null;
 let instanceStoreTimer = null;
 let closeRetryTimer = null;
 let guardBc = null;
+// Set once we've shown the "you have a different unfinished link" screen, so
+// periodic/resume checks stop re-deciding against a DOM that now shows the
+// conflict screen itself instead of the link we're trying to protect.
+let conflictShown = false;
+let conflictScreenId = null;
 const seenPeers = {};
 const guardDbg = { lastLocal: '-', lastStore: '-', bc: 'no' };
 
@@ -717,6 +734,58 @@ function handleLock(lock, source) {
   }
   if (isNewerInstance(lock, source)) retireThisInstance('newer ' + shortId(lock.id) + ' via ' + source);
 }
+
+// ---- Task tracking: what link is this tab currently showing? ----
+// Only whichever tab currently owns the lock (not stale) publishes this, so a
+// resuming stale tab can tell "is my unfinished link the SAME thing already
+// happening in the newest tab" (safe to close) vs genuinely different work
+// (don't silently drop it).
+function normalizeLink(s) { return String(s || '').trim().replace(/\/+$/, ''); }
+function currentTaskLink() {
+  const activeScreen = document.querySelector('.screen.active');
+  const screenId = activeScreen ? activeScreen.id : null;
+  let val = '';
+  if (screenId === 'screen-identify') {
+    const el = document.getElementById('identify-url-input');
+    val = el ? el.value : '';
+  } else if (screenId === 'screen-app') {
+    const activeTab = document.querySelector('#screen-app .tabPane.active');
+    if (activeTab && activeTab.id === 'tab-download') {
+      const el = document.getElementById('url-input');
+      val = el ? el.value : '';
+    }
+  }
+  return { screen: screenId, link: normalizeLink(val) };
+}
+function publishCurrentTaskIfActive() {
+  if (isStale) return; // a stale/backgrounded tab is never the source of truth
+  const task = currentTaskLink();
+  const payload = { owner: APP_INSTANCE_ID, screen: task.screen, link: task.link, ts: Date.now() };
+  const value = JSON.stringify(payload);
+  try { localStorage.setItem(TASK_KEY, value); } catch (e) {}
+  if (guardBc) { try { guardBc.postMessage({ task: payload }); } catch (e) {} }
+  if (sharedStore) { try { sharedStore.s.setItem(TASK_KEY, value, function () {}); } catch (e) {} }
+}
+function parseTaskPayload(raw) {
+  try {
+    const t = JSON.parse(raw || 'null');
+    return (t && t.owner) ? t : null;
+  } catch (e) { return null; }
+}
+// Reads the newest tab's current task. Tries localStorage first (instant),
+// falls back to the shared device/cloud store (works even without shared
+// browser storage). Always calls back — with null if nothing is known.
+function readNewestTask(cb) {
+  let raw = null;
+  try { raw = localStorage.getItem(TASK_KEY); } catch (e) {}
+  const local = parseTaskPayload(raw);
+  if (local) { cb(local); return; }
+  if (sharedStore) {
+    try { sharedStore.s.getItem(TASK_KEY, function (err, value) { cb(err ? null : parseTaskPayload(value)); }); return; }
+    catch (e) {}
+  }
+  cb(null);
+}
 function claimInstanceLock() {
   instanceRetired = false;
   isStale = false;
@@ -761,10 +830,36 @@ function retireThisInstance(reason) {
   if (instanceLocalTimer) clearInterval(instanceLocalTimer);
   if (instanceStoreTimer) clearInterval(instanceStoreTimer);
   instanceLocalTimer = instanceStoreTimer = null;
-  attemptClose(reason);
+  decideAndMaybeClose(reason);
   // Backup: keep nudging close() every few seconds even with no resume event,
   // in case this WebView is quietly resumed without firing one on this device.
-  if (!closeRetryTimer) closeRetryTimer = setInterval(function () { attemptClose('periodic retry'); }, 4000);
+  if (!closeRetryTimer) closeRetryTimer = setInterval(function () {
+    if (!conflictShown) decideAndMaybeClose('periodic retry');
+  }, 4000);
+}
+// The actual gatekeeper: only close if closing loses nothing. If this tab's
+// current link differs from what's now happening in the newest tab, we STOP
+// short of ever calling tg.close() and ask the user instead — once close()
+// succeeds there's no undo, so the check has to happen before it, not after.
+function decideAndMaybeClose(reason) {
+  const mine = currentTaskLink();
+  if (!mine.link) { attemptClose(reason + ', nothing unfinished here'); return; }
+  readNewestTask(function (newestTask) {
+    if (conflictShown) return; // already asked the user; don't fight that screen
+    if (newestTask && newestTask.link === mine.link) {
+      attemptClose(reason + ', same link as newest tab');
+    } else {
+      conflictShown = true;
+      conflictScreenId = mine.screen;
+      guardLog('kept open (' + reason + '): unfinished ' + mine.link.slice(0, 40));
+      renderConflictScreen(mine.link);
+      showScreen('screen-conflict');
+    }
+  });
+}
+function renderConflictScreen(link) {
+  const el = document.getElementById('conflictLinkText');
+  if (el) el.textContent = link;
 }
 function checkLocalForNewerInstance() {
   if (instanceRetired) return;
@@ -800,8 +895,9 @@ try {
     guardBc = new BroadcastChannel('cs_instance');
     guardDbg.bc = 'yes';
     guardBc.onmessage = function (e) {
-      const l = e.data;
-      if (l && l.id && l.ts) handleLock(l, 'broadcast');
+      const d = e.data;
+      if (d && d.task) return; // task updates are read on-demand via readNewestTask, not pushed
+      if (d && d.id && d.ts) handleLock(d, 'broadcast');
     };
   }
 } catch (e) { guardBc = null; }
@@ -815,7 +911,7 @@ window.addEventListener('storage', (e) => {
 // superseded, or — if it already knows it's stale — gets another shot at
 // close(), which the logs show can fail silently while not the foreground view.
 function onResume() {
-  if (isStale) { attemptClose('resumed'); return; }
+  if (isStale) { if (!conflictShown) decideAndMaybeClose('resumed'); return; }
   checkForNewerInstance();
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) onResume(); });
@@ -832,12 +928,18 @@ function renderGuardDebug() {
   let log = [];
   try { log = JSON.parse(localStorage.getItem(GUARD_LOG_KEY) || '[]'); } catch (e) {}
   const t = (ts) => new Date(ts).toTimeString().slice(0, 8);
+  const mine = currentTaskLink();
+  let newestRaw = null;
+  try { newestRaw = localStorage.getItem(TASK_KEY); } catch (e) {}
+  const newest = parseTaskPayload(newestRaw);
   const lines = [
     'build ' + GUARD_BUILD + '  me=' + ME,
     'tg ' + (tg ? (tg.version + ' ' + tg.platform + ' active=' + tg.isActive) : 'none'),
     'store=' + (sharedStore ? sharedStore.name : 'none') + '  broadcast=' + guardDbg.bc,
     'local lock: ' + guardDbg.lastLocal,
     'store lock: ' + guardDbg.lastStore,
+    'my task: ' + (mine.link ? (mine.screen + ' → ' + mine.link.slice(0, 30)) : 'none'),
+    'newest task: ' + (newest ? (shortId(newest.owner) + ' ' + newest.screen + ' → ' + (newest.link ? newest.link.slice(0, 30) : 'none')) : 'unknown'),
     '--- log (shared by all tabs) ---'
   ].concat(log.slice(-18).map(r => t(r[0]) + ' ' + r[1] + ' ' + r[2]));
   box.querySelector('pre').textContent = lines.join('\n');
@@ -871,11 +973,38 @@ function toggleGuardDebug() {
   });
 })();
 
+// Every screen switch by whichever tab currently owns the lock re-publishes
+// its task, so a stale tab checking in always compares against fresh state.
+const _origShowScreen = showScreen;
+showScreen = function (id) {
+  _origShowScreen(id);
+  publishCurrentTaskIfActive();
+};
+['identify-url-input', 'url-input'].forEach(function (id) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', publishCurrentTaskIfActive);
+});
+
 document.getElementById('takeOverBtn').onclick = () => {
   instanceStartedAt = Date.now(); // become the newest again
   claimInstanceLock();
   startInstanceWatch();
   init();
+};
+document.getElementById('conflictDiscardBtn').onclick = () => {
+  conflictShown = false;
+  attemptClose('user discarded own link');
+};
+document.getElementById('conflictKeepBtn').onclick = () => {
+  // Reclaim ownership WITHOUT re-running init(): the point is to get back to
+  // the exact screen and input value this tab still had, not reset it.
+  conflictShown = false;
+  isStale = false;
+  instanceRetired = false;
+  instanceStartedAt = Date.now();
+  claimInstanceLock();
+  startInstanceWatch();
+  if (conflictScreenId) showScreen(conflictScreenId);
 };
 
 window.addEventListener('DOMContentLoaded', () => {
