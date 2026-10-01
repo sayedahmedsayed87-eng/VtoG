@@ -165,8 +165,8 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .rowValue{font-size:14px;font-weight:800;line-height:1.4;overflow-wrap:anywhere}
 .rowIcon{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:14px;background:color-mix(in srgb,var(--button) 12%,transparent)}
 
-.warning{margin-top:14px;padding:14px;border-radius:15px;background:color-mix(in srgb,var(--warning) 12%,transparent);text-align:left;line-height:1.7;font-size:13.5px}
-.warning.danger-warning{background:color-mix(in srgb,var(--danger) 10%,transparent)}
+.warning{margin-top:14px;padding:14px;border-radius:15px;background:color-mix(in srgb,var(--warning) 12%,transparent);border:1px solid color-mix(in srgb,var(--warning) 45%,transparent);box-shadow:0 0 14px 1px color-mix(in srgb,var(--warning) 22%,transparent);text-align:left;line-height:1.7;font-size:13.5px}
+.warning.danger-warning{background:color-mix(in srgb,var(--danger) 10%,transparent);border-color:color-mix(in srgb,var(--danger) 45%,transparent);box-shadow:0 0 14px 1px color-mix(in srgb,var(--danger) 22%,transparent)}
 .warningTitle{font-weight:850;margin-bottom:2px}
 
 .footer{padding-top:14px;text-align:center;color:var(--muted);font-size:11px;display:flex;justify-content:space-between}
@@ -202,6 +202,51 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 
 .confirmButtons{display:flex;gap:10px;margin-top:14px}
 .confirmButtons button{margin-top:0;flex:1}
+
+/* Settings popup: left-aligned tab strip (User settings / App settings) */
+.settingsTabs{display:flex;gap:6px;margin-bottom:14px;flex:none}
+.settingsTab{width:auto;flex:1;min-height:0;margin:0;padding:10px 10px;border-radius:12px;background:color-mix(in srgb,var(--muted) 9%,transparent);color:var(--muted);font-size:13.5px;font-weight:800}
+.settingsTab.active{background:color-mix(in srgb,var(--button) 13%,transparent);color:var(--button)}
+.settingsPane{display:none}
+.settingsPane.active{display:block}
+
+/* Categorized sections inside each settings tab — same collapsible look as
+   the FAQ items, but the +/− indicator sits before the headline instead of after. */
+.settingsCategory{border-bottom:1px solid var(--border);padding:12px 0}
+.settingsCategory:last-child{border-bottom:0}
+.settingsCategory summary{cursor:pointer;font-weight:800;font-size:14.5px;list-style:none;display:flex;align-items:center;gap:10px}
+.settingsCategory summary::-webkit-details-marker{display:none}
+.settingsCategory summary:before{content:"+";flex:none;font-size:18px;font-weight:700;color:var(--muted)}
+.settingsCategory[open] summary:before{content:"\2212"}
+.settingsCategoryBody{margin-top:12px}
+
+/* Toggle switches used by the User settings preferences */
+.toggleRow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0}
+.toggleRow:first-child{padding-top:0}
+.toggleRow:last-child{padding-bottom:0}
+.toggleText{min-width:0}
+.toggleLabel{font-size:14px;font-weight:750}
+.toggleHint{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.5}
+.switch{position:relative;width:44px;height:26px;flex:none}
+.switch input{opacity:0;width:0;height:0;position:absolute}
+.switchSlider{position:absolute;inset:0;background:color-mix(in srgb,var(--muted) 30%,transparent);border-radius:99px;cursor:pointer;transition:background .2s}
+.switchSlider:before{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.switch input:checked + .switchSlider{background:var(--button)}
+.switch input:checked + .switchSlider:before{transform:translateX(18px)}
+
+/* Destination folder: preview + "Choose" button share one row */
+.folderFieldRow{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.folderFieldRow .pathPreview{flex:1;margin-bottom:0}
+.folderFieldBtn{width:auto;flex:none;margin:0;padding:11px 16px;white-space:nowrap}
+
+/* Locked "coming soon" home buttons */
+.homeBtn.locked{opacity:.55;filter:grayscale(.5);cursor:default}
+.homeBtn.locked:active{transform:none}
+.comingSoonBadge{font-size:11px;font-weight:800;color:var(--muted);background:color-mix(in srgb,var(--muted) 16%,transparent);padding:4px 11px;border-radius:99px;margin-top:0}
+
+/* Success / warning-error glow — submission feedback overlays and warning boxes */
+.help-inner.glow-success{border:1px solid var(--success);box-shadow:0 0 0 1px var(--success),0 0 30px 2px color-mix(in srgb,var(--success) 35%,transparent),0 20px 60px rgba(0,0,0,.35)}
+.help-inner.glow-danger{border:1px solid var(--danger);box-shadow:0 0 0 1px var(--danger),0 0 30px 2px color-mix(in srgb,var(--danger) 35%,transparent),0 20px 60px rgba(0,0,0,.35)}
 
 @media (max-height:700px){
   .app{padding-top:max(8px,env(safe-area-inset-top));padding-bottom:max(12px,env(safe-area-inset-bottom))}
@@ -299,6 +344,16 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
           <span class="homeEmoji">📥</span>
           <span class="homeLabel">Video to Gdrive</span>
         </button>
+        <button type="button" id="homeMp3Btn" class="homeBtn locked" disabled aria-label="Video to MP3 — coming soon">
+          <span class="homeEmoji">🎵</span>
+          <span class="homeLabel">Video to MP3</span>
+          <span class="comingSoonBadge">Coming soon</span>
+        </button>
+        <button type="button" id="homeImageSeqBtn" class="homeBtn locked" disabled aria-label="Video to Image Sequence — coming soon">
+          <span class="homeEmoji">🖼️</span>
+          <span class="homeLabel">Video to Image Sequence</span>
+          <span class="comingSoonBadge">Coming soon</span>
+        </button>
       </div>
     </section>
 
@@ -337,10 +392,12 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
       </div>
 
       <label>Destination folder</label>
-      <div id="mainPathPreview" class="pathPreview placeholder">📁 No folder selected yet</div>
-      <button type="button" class="folder-select secondary" id="folder-select-btn">
-        <span class="folder-select-label">📁 Choose a folder</span>
-      </button>
+      <div class="folderFieldRow">
+        <div id="mainPathPreview" class="pathPreview placeholder">📁 No folder selected yet</div>
+        <button type="button" class="folder-select secondary folderFieldBtn" id="folder-select-btn">
+          <span class="folder-select-label">Choose</span>
+        </button>
+      </div>
 
       <div id="main-error" class="error-text hidden"></div>
 
@@ -370,7 +427,7 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 
 <!-- Queued confirmation overlay -->
 <div id="queuedOverlay" class="help-overlay hidden">
-  <div class="help-inner" style="text-align:center">
+  <div class="help-inner glow-success" style="text-align:center">
     <div class="icon success" style="margin:0 auto 12px">📥</div>
     <h2>Added to the queue</h2>
     <p class="message" id="queuedMsg">We'll send you a message on Telegram as soon as it's ready.</p>
@@ -380,7 +437,7 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 
 <!-- Identify result overlay (success or error) -->
 <div id="identifyResultOverlay" class="help-overlay hidden">
-  <div class="help-inner" style="text-align:center">
+  <div class="help-inner" id="identifyResultInner" style="text-align:center">
     <div id="identifyResultIcon" class="icon success" style="margin:0 auto 12px">📥</div>
     <h2 id="identifyResultTitle">Video link received</h2>
     <p class="message" id="identifyResultMsg">You'll be notified with the result as soon as the video is identified.</p>
@@ -395,24 +452,102 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
       <button type="button" class="help-close" id="settingsCloseBtn" aria-label="Close">×</button>
       <div class="help-title">Settings</div>
     </div>
+    <div class="settingsTabs">
+      <button type="button" class="settingsTab active" id="settingsTabUser" data-settings-tab="user">User settings</button>
+      <button type="button" class="settingsTab" id="settingsTabApp" data-settings-tab="app">App settings</button>
+    </div>
     <div class="help-body">
-      <p class="settingsHint">Add a new shared Google Drive folder</p>
-      <button type="button" id="openAddFolderBtn" class="addFolderFab" aria-label="Add folder">
-        <svg viewBox="0 0 24 22" width="18" height="16" aria-hidden="true">
-          <polygon points="12,2 22,20 12,14" fill="#4285F4"/>
-          <polygon points="22,20 2,20 12,14" fill="#34A853"/>
-          <polygon points="2,20 12,2 12,14" fill="#FBBC05"/>
-        </svg>
-        <span>Add folder</span>
-      </button>
 
-      <div class="folderListHeader">
-        <label style="margin:0">Your folders</label>
-        <button type="button" id="reloadFoldersBtn" class="addFolderFab" aria-label="Reload folders">
-          <span>🔄</span><span>Reload</span>
-        </button>
+      <!-- User settings -->
+      <div class="settingsPane active" id="settingsPaneUser">
+
+        <details class="settingsCategory" open>
+          <summary>Account</summary>
+          <div class="settingsCategoryBody">
+            <div class="card">
+              <div class="row">
+                <div class="rowIcon">👤</div>
+                <div class="rowText">
+                  <div class="rowLabel">Telegram username</div>
+                  <div class="rowValue" id="userSettingsUsername">—</div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="rowIcon">🆔</div>
+                <div class="rowText">
+                  <div class="rowLabel">Chat ID</div>
+                  <div class="rowValue" id="userSettingsChatId">—</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details class="settingsCategory">
+          <summary>Usage report</summary>
+          <div class="settingsCategoryBody" id="usageReportBody">
+            <div class="emptyNote loadingRow"><span class="spinner dark"></span>Loading…</div>
+          </div>
+        </details>
+
+        <details class="settingsCategory">
+          <summary>Preferences</summary>
+          <div class="settingsCategoryBody">
+            <div class="toggleRow">
+              <div class="toggleText">
+                <div class="toggleLabel">Auto-fill name from video title</div>
+                <div class="toggleHint">When you paste a link, try to fill "Save as" from the page title automatically.</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="settingAutoFillName">
+                <span class="switchSlider"></span>
+              </label>
+            </div>
+            <div class="toggleRow">
+              <div class="toggleText">
+                <div class="toggleLabel">Remember last folder</div>
+                <div class="toggleHint">Pre-select the last destination folder you used next time you open the app.</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="settingRememberFolder">
+                <span class="switchSlider"></span>
+              </label>
+            </div>
+            <button type="button" id="clearLocalCacheBtn" class="secondary">Clear local cache</button>
+            <div id="clearCacheMsg" class="message hidden" style="margin-top:8px;margin-bottom:0"></div>
+          </div>
+        </details>
+
       </div>
-      <div class="folder-tree" id="manage-folder-list"></div>
+
+      <!-- App settings -->
+      <div class="settingsPane" id="settingsPaneApp">
+
+        <details class="settingsCategory" open>
+          <summary>Google Drive folders</summary>
+          <div class="settingsCategoryBody">
+            <p class="settingsHint">Add a new shared Google Drive folder</p>
+            <button type="button" id="openAddFolderBtn" class="addFolderFab" aria-label="Add folder">
+              <svg viewBox="0 0 24 22" width="18" height="16" aria-hidden="true">
+                <polygon points="12,2 22,20 12,14" fill="#4285F4"/>
+                <polygon points="22,20 2,20 12,14" fill="#34A853"/>
+                <polygon points="2,20 12,2 12,14" fill="#FBBC05"/>
+              </svg>
+              <span>Add folder</span>
+            </button>
+
+            <div class="folderListHeader">
+              <label style="margin:0">Your folders</label>
+              <button type="button" id="reloadFoldersBtn" class="addFolderFab" aria-label="Reload folders">
+                <span>🔄</span><span>Reload</span>
+              </button>
+            </div>
+            <div class="folder-tree" id="manage-folder-list"></div>
+          </div>
+        </details>
+
+      </div>
+
     </div>
   </div>
 </div>
@@ -504,6 +639,46 @@ wireClearButton('url-input', 'clearUrlBtn');
 wireClearButton('name-input', 'clearNameBtn');
 wireClearButton('new-folder-link', 'clearFolderLinkBtn');
 let currentUsername = '';
+
+// ---- User settings (per device, localStorage) ----
+//
+// Purely client-side preferences — nothing here is sent to the server.
+// Same pattern as the profile/folder caches above: best-effort, silently
+// falls back to defaults if storage is unavailable or corrupt.
+const AppSettings = (() => {
+  const KEY = 'userSettings_v1';
+  const DEFAULTS = { autoFillName: true, rememberFolder: true };
+
+  function load() {
+    try {
+      return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || '{}'));
+    } catch (e) {
+      return Object.assign({}, DEFAULTS);
+    }
+  }
+  function save(settings) {
+    try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch (e) { /* best-effort only */ }
+  }
+  return { load, save };
+})();
+let userSettings = AppSettings.load();
+
+function rememberedFolderKey_(id) { return 'lastFolder_' + id; }
+function saveRememberedFolder(id, folder) {
+  if (!userSettings.rememberFolder) return;
+  try { localStorage.setItem(rememberedFolderKey_(id), JSON.stringify(folder)); } catch (e) { /* best-effort only */ }
+}
+function loadRememberedFolder(id) {
+  try {
+    const raw = localStorage.getItem(rememberedFolderKey_(id));
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+function clearRememberedFolder(id) {
+  try { localStorage.removeItem(rememberedFolderKey_(id)); } catch (e) { /* ignore */ }
+}
 
 // ---- Screen helpers ----
 const SETTINGS_SCREENS = ['screen-home', 'screen-identify', 'screen-app']; // screens that show the ⚙️ gear (everything after sign-in)
@@ -1144,6 +1319,15 @@ async function init() {
     return;
   }
 
+  if (userSettings.rememberFolder && !selectedFolder) {
+    const remembered = loadRememberedFolder(chatId);
+    if (remembered && remembered.driveFolderId) {
+      selectedFolder = remembered;
+      updateMainPathPreview(remembered.path);
+      updateDownloadEnabled();
+    }
+  }
+
   const cached = getCachedProfile(chatId);
   if (cached && cached.registered) {
     currentUsername = cached.username;
@@ -1303,6 +1487,9 @@ function showIdentifyResult(success, title, message) {
   icon.textContent = success ? '📥' : '⚠️';
   icon.classList.toggle('success', success);
   icon.classList.toggle('warningIcon', !success);
+  const inner = document.getElementById('identifyResultInner');
+  inner.classList.toggle('glow-success', success);
+  inner.classList.toggle('glow-danger', !success);
   document.getElementById('identifyResultTitle').textContent = title;
   document.getElementById('identifyResultMsg').textContent = message;
   openOverlay('identifyResultOverlay');
@@ -1375,6 +1562,8 @@ function openSettings() {
   openOverlay('settingsOverlay');
   loadManageFolders();
   startManageFoldersRefresh();
+  renderUserSettingsPane();
+  loadUsageReport();
 }
 function closeSettings() {
   closeOverlay('settingsOverlay');
@@ -1383,6 +1572,80 @@ function closeSettings() {
 document.getElementById('settingsFab').onclick = openSettings;
 document.getElementById('settingsCloseBtn').onclick = closeSettings;
 document.getElementById('settingsOverlay').addEventListener('click', function (e) { if (e.target === this) closeSettings(); });
+
+// ---- Settings popup: tab switching (User settings / App settings) ----
+document.querySelectorAll('.settingsTab').forEach(tabBtn => {
+  tabBtn.onclick = () => {
+    document.querySelectorAll('.settingsTab').forEach(b => b.classList.toggle('active', b === tabBtn));
+    const which = tabBtn.dataset.settingsTab;
+    document.getElementById('settingsPaneUser').classList.toggle('active', which === 'user');
+    document.getElementById('settingsPaneApp').classList.toggle('active', which === 'app');
+  };
+});
+
+// ---- User settings pane: account info + preference toggles ----
+function renderUserSettingsPane() {
+  document.getElementById('userSettingsUsername').textContent = currentUsername ? '@' + currentUsername : '—';
+  document.getElementById('userSettingsChatId').textContent = chatId || '—';
+
+  const autoFillToggle = document.getElementById('settingAutoFillName');
+  const rememberToggle = document.getElementById('settingRememberFolder');
+  autoFillToggle.checked = !!userSettings.autoFillName;
+  rememberToggle.checked = !!userSettings.rememberFolder;
+}
+
+document.getElementById('settingAutoFillName').addEventListener('change', (e) => {
+  userSettings.autoFillName = e.target.checked;
+  AppSettings.save(userSettings);
+});
+document.getElementById('settingRememberFolder').addEventListener('change', (e) => {
+  userSettings.rememberFolder = e.target.checked;
+  AppSettings.save(userSettings);
+  if (!e.target.checked) clearRememberedFolder(chatId);
+  else if (selectedFolder) saveRememberedFolder(chatId, selectedFolder);
+});
+
+document.getElementById('clearLocalCacheBtn').onclick = () => {
+  FolderCache.clearAll(chatId);
+  clearCachedProfile(chatId);
+  clearRememberedFolder(chatId);
+  const msg = document.getElementById('clearCacheMsg');
+  msg.textContent = 'Local cache cleared on this device.';
+  msg.classList.remove('hidden');
+  setTimeout(() => msg.classList.add('hidden'), 3000);
+};
+
+// ---- User settings pane: usage report ----
+// getUserStats isn't part of the API contract yet — this renders whatever
+// comes back and falls back to a friendly note if the server doesn't
+// recognize the action yet, rather than breaking the rest of Settings.
+let usageReportLoaded = false;
+async function loadUsageReport() {
+  if (usageReportLoaded) return; // one fetch per app session is enough — it's not live-changing data
+  const body = document.getElementById('usageReportBody');
+  let result;
+  try {
+    result = await callApi('getUserStats', { chatId });
+  } catch (e) {
+    body.innerHTML = '<div class="emptyNote">Could not load usage data.</div>';
+    return;
+  }
+  if (isErrorResult(result)) {
+    body.innerHTML = '<div class="emptyNote">Usage report isn\'t available yet.</div>';
+    return;
+  }
+  usageReportLoaded = true;
+  const gbUsed = typeof result.gbUsedThisPeriod === 'number' ? result.gbUsedThisPeriod.toFixed(2) : '—';
+  const quota = typeof result.quotaGb === 'number' ? (result.quotaGb === -1 ? 'Unlimited' : result.quotaGb + ' GB') : '—';
+  const totalVideos = typeof result.totalVideos === 'number' ? result.totalVideos : '—';
+  const lifetimeGb = typeof result.totalGbLifetime === 'number' ? result.totalGbLifetime.toFixed(2) : '—';
+  body.innerHTML = `
+    <div class="card">
+      <div class="row"><div class="rowIcon">📊</div><div class="rowText"><div class="rowLabel">Used this period</div><div class="rowValue">${gbUsed} GB of ${quota}</div></div></div>
+      <div class="row"><div class="rowIcon">🎬</div><div class="rowText"><div class="rowLabel">Videos downloaded</div><div class="rowValue">${totalVideos}</div></div></div>
+      <div class="row"><div class="rowIcon">💾</div><div class="rowText"><div class="rowLabel">Lifetime total</div><div class="rowValue">${lifetimeGb} GB</div></div></div>
+    </div>`;
+}
 
 // ---- Download form validation ----
 function updateDownloadEnabled() {
@@ -1423,6 +1686,7 @@ let titleFetchDebounce = null;
 let titleFetchSeq = 0;
 
 function scheduleTitleFetch() {
+  if (!userSettings.autoFillName) return;
   clearTimeout(titleFetchDebounce);
   const url = document.getElementById('url-input').value.trim();
   if (!/(?:youtube\.com|youtu\.be)/i.test(url)) return;
@@ -1670,6 +1934,7 @@ document.getElementById('folderPickerConfirmBtn').onclick = () => {
   selectedFolder = pendingFolder;
   updateMainPathPreview(selectedFolder.path);
   updateDownloadEnabled();
+  saveRememberedFolder(chatId, selectedFolder);
   closeOverlay('folderPickerOverlay');
 };
 
