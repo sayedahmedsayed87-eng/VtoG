@@ -55,11 +55,12 @@ body{height:100vh;height:100dvh;font-family:-apple-system,BlinkMacSystemFont,"Se
 
 .centerScreen{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:clamp(22px,6.5vw,32px);text-align:center;box-shadow:0 10px 32px rgba(0,0,0,.06)}
 
-.homeGrid{display:flex;flex-direction:column;gap:16px;margin-top:6px}
-.homeBtn{width:100%;min-height:clamp(120px,32vw,150px);margin:0;padding:18px;border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:var(--surface);color:var(--text);border:1px solid var(--border);box-shadow:0 10px 32px rgba(0,0,0,.06)}
+.homeGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,auto);gap:12px;margin-top:6px}
+.homeCell{min-height:clamp(120px,34vw,150px)}
+.homeBtn{width:100%;min-height:clamp(120px,34vw,150px);margin:0;padding:12px 10px;border-radius:20px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:var(--surface);color:var(--text);border:1px solid var(--border);box-shadow:0 10px 32px rgba(0,0,0,.06)}
 .homeBtn:active{transform:scale(.97)}
-.homeEmoji{font-size:clamp(40px,12vw,52px);line-height:1}
-.homeLabel{font-size:clamp(15px,4.5vw,17px);font-weight:850}
+.homeEmoji{font-size:clamp(34px,10vw,44px);line-height:1}
+.homeLabel{font-size:clamp(13px,3.7vw,15px);font-weight:850;line-height:1.25}
 
 .formCard{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 16px 18px}
 .icon{width:clamp(64px,18vw,76px);height:clamp(64px,18vw,76px);margin:0 auto 16px;border-radius:50%;display:grid;place-items:center;font-size:clamp(28px,8vw,34px);background:color-mix(in srgb,var(--button) 11%,transparent)}
@@ -90,6 +91,8 @@ input[type=text]:focus{outline:2px solid color-mix(in srgb,var(--button) 40%,tra
 button{width:100%;min-height:52px;margin-top:14px;padding:12px 16px;border:0;border-radius:15px;font:inherit;font-size:clamp(15px,4.2vw,16px);font-weight:800;color:var(--buttonText);background:var(--button);cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;gap:8px}
 button:disabled{opacity:.45;cursor:default}
 button.danger{background:var(--danger)}
+button.success{background:var(--success)}
+button.fitBtn{width:auto;min-height:0;padding:10px 18px;margin-top:6px;border-radius:12px;font-size:14px}
 button.secondary{color:var(--text);background:color-mix(in srgb,var(--muted) 10%,transparent)}
 button.back,.cancelText{color:var(--button);background:transparent;border:0;font-size:14px;min-height:38px;font-weight:700}
 
@@ -218,7 +221,7 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .settingsCategory summary::-webkit-details-marker{display:none}
 .settingsCategory summary:before{content:"+";flex:none;font-size:18px;font-weight:700;color:var(--muted)}
 .settingsCategory[open] summary:before{content:"\2212"}
-.settingsCategoryBody{margin-top:12px}
+.settingsCategoryBody{margin-top:12px;margin-left:12px;padding-left:14px;border-left:2px solid color-mix(in srgb,var(--button) 22%,transparent)}
 
 /* Toggle switches used by the User settings preferences */
 .toggleRow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0}
@@ -234,7 +237,18 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .switch input:checked + .switchSlider{background:var(--button)}
 .switch input:checked + .switchSlider:before{transform:translateX(18px)}
 
-/* Destination folder: preview + "Choose" button share one row */
+/* Clear cache block + confirmation */
+.clearCacheBlock{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
+.clearCacheHint{margin:0 0 8px;font-size:12.5px;line-height:1.55;font-weight:600}
+.cacheList{margin:8px 0 10px;padding:0 0 0 20px;text-align:left;font-size:13.5px;line-height:1.7;color:var(--text)}
+.cacheNote{font-size:12.5px;margin:0 0 4px}
+/* Destination folder: the whole field is the button */
+button.folderPickBtn{width:100%;min-height:50px;margin:0 0 12px;padding:11px 14px;justify-content:space-between;text-align:left;border-radius:12px;font-size:14px;font-weight:700;color:var(--text);background:color-mix(in srgb,var(--button) 10%,transparent);border:1.5px solid color-mix(in srgb,var(--button) 55%,transparent)}
+button.folderPickBtn.secondary{background:color-mix(in srgb,var(--muted) 8%,transparent);border:1.5px dashed color-mix(in srgb,var(--muted) 55%,transparent)}
+button.folderPickBtn:active{transform:scale(.98)}
+.folderPickText{flex:1;min-width:0;overflow-wrap:anywhere}
+.folderPickText.placeholder{color:var(--muted);font-weight:600}
+.folderPickChevron{flex:none;font-size:24px;line-height:1;color:var(--button)}
 .folderFieldRow{display:flex;align-items:center;gap:8px;margin-bottom:12px}
 .folderFieldRow .pathPreview{flex:1;margin-bottom:0}
 .folderFieldBtn{width:auto;flex:none;margin:0;padding:11px 16px;white-space:nowrap}
@@ -354,6 +368,8 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
           <span class="homeLabel">Video to Image Sequence</span>
           <span class="comingSoonBadge">Coming soon</span>
         </button>
+        <div class="homeCell" aria-hidden="true"></div>
+        <div class="homeCell" aria-hidden="true"></div>
       </div>
     </section>
 
@@ -392,12 +408,10 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
       </div>
 
       <label>Destination folder</label>
-      <div class="folderFieldRow">
-        <div id="mainPathPreview" class="pathPreview placeholder">📁 No folder selected yet</div>
-        <button type="button" class="folder-select secondary folderFieldBtn" id="folder-select-btn">
-          <span class="folder-select-label">Choose</span>
-        </button>
-      </div>
+      <button type="button" class="folder-select secondary folderPickBtn" id="folder-select-btn" aria-label="Choose destination folder">
+        <span id="mainPathPreview" class="folderPickText placeholder">📁 Tap to choose a folder</span>
+        <span class="folderPickChevron" aria-hidden="true">›</span>
+      </button>
 
       <div id="main-error" class="error-text hidden"></div>
 
@@ -462,35 +476,6 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
       <div class="settingsPane active" id="settingsPaneUser">
 
         <details class="settingsCategory" open>
-          <summary>Account</summary>
-          <div class="settingsCategoryBody">
-            <div class="card">
-              <div class="row">
-                <div class="rowIcon">👤</div>
-                <div class="rowText">
-                  <div class="rowLabel">Telegram username</div>
-                  <div class="rowValue" id="userSettingsUsername">—</div>
-                </div>
-              </div>
-              <div class="row">
-                <div class="rowIcon">🆔</div>
-                <div class="rowText">
-                  <div class="rowLabel">Chat ID</div>
-                  <div class="rowValue" id="userSettingsChatId">—</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </details>
-
-        <details class="settingsCategory">
-          <summary>Usage report</summary>
-          <div class="settingsCategoryBody" id="usageReportBody">
-            <div class="emptyNote loadingRow"><span class="spinner dark"></span>Loading…</div>
-          </div>
-        </details>
-
-        <details class="settingsCategory">
           <summary>Preferences</summary>
           <div class="settingsCategoryBody">
             <div class="toggleRow">
@@ -513,8 +498,18 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
                 <span class="switchSlider"></span>
               </label>
             </div>
-            <button type="button" id="clearLocalCacheBtn" class="secondary">Clear local cache</button>
-            <div id="clearCacheMsg" class="message hidden" style="margin-top:8px;margin-bottom:0"></div>
+            <div class="clearCacheBlock">
+              <p class="settingsHint clearCacheHint">Clear local cache removes the folder lists, sign-in shortcut and remembered folder saved on this device. Your Drive files and downloads are not affected.</p>
+              <button type="button" id="clearLocalCacheBtn" class="danger fitBtn">Clear local cache</button>
+              <div id="clearCacheMsg" class="message hidden" style="margin-top:8px;margin-bottom:0"></div>
+            </div>
+          </div>
+        </details>
+
+        <details class="settingsCategory">
+          <summary>Usage report</summary>
+          <div class="settingsCategoryBody" id="usageReportBody">
+            <div class="emptyNote loadingRow"><span class="spinner dark"></span>Loading…</div>
           </div>
         </details>
 
@@ -583,6 +578,25 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
     <div class="confirmButtons">
       <button type="button" id="removeCancelBtn">Cancel</button>
       <button type="button" id="removeConfirmBtn" class="danger">Remove</button>
+    </div>
+  </div>
+</div>
+
+<!-- Clear local cache confirmation overlay -->
+<div id="clearCacheOverlay" class="help-overlay hidden">
+  <div class="help-inner" style="text-align:center">
+    <div class="icon warningIcon" style="margin:0 auto 12px">⚠️</div>
+    <h2>Clear local cache?</h2>
+    <p class="message" style="margin-bottom:6px">Here's what will happen:</p>
+    <ul class="cacheList">
+      <li>Saved folder lists on this device are deleted.</li>
+      <li>Your remembered destination folder is forgotten.</li>
+      <li>The next time you open the app, it has to load everything again, so it may feel slower for a moment.</li>
+    </ul>
+    <p class="message cacheNote">Nothing in Google Drive is deleted, and your downloads are not affected.</p>
+    <div class="confirmButtons">
+      <button type="button" id="clearCacheConfirmBtn" class="danger">Confirm</button>
+      <button type="button" id="clearCacheCancelBtn" class="success">Cancel</button>
     </div>
   </div>
 </div>
@@ -1585,9 +1599,6 @@ document.querySelectorAll('.settingsTab').forEach(tabBtn => {
 
 // ---- User settings pane: account info + preference toggles ----
 function renderUserSettingsPane() {
-  document.getElementById('userSettingsUsername').textContent = currentUsername ? '@' + currentUsername : '—';
-  document.getElementById('userSettingsChatId').textContent = chatId || '—';
-
   const autoFillToggle = document.getElementById('settingAutoFillName');
   const rememberToggle = document.getElementById('settingRememberFolder');
   autoFillToggle.checked = !!userSettings.autoFillName;
@@ -1605,7 +1616,13 @@ document.getElementById('settingRememberFolder').addEventListener('change', (e) 
   else if (selectedFolder) saveRememberedFolder(chatId, selectedFolder);
 });
 
-document.getElementById('clearLocalCacheBtn').onclick = () => {
+document.getElementById('clearLocalCacheBtn').onclick = () => openOverlay('clearCacheOverlay');
+document.getElementById('clearCacheCancelBtn').onclick = () => closeOverlay('clearCacheOverlay');
+document.getElementById('clearCacheOverlay').addEventListener('click', function (e) {
+  if (e.target === this) closeOverlay('clearCacheOverlay');
+});
+document.getElementById('clearCacheConfirmBtn').onclick = () => {
+  closeOverlay('clearCacheOverlay');
   FolderCache.clearAll(chatId);
   clearCachedProfile(chatId);
   clearRememberedFolder(chatId);
@@ -1945,7 +1962,7 @@ function updateMainPathPreview(path) {
   const el = document.getElementById('mainPathPreview');
   const btn = document.getElementById('folder-select-btn');
   if (!path || !path.length) {
-    el.textContent = '📁 No folder selected yet';
+    el.textContent = '📁 Tap to choose a folder';
     el.classList.add('placeholder');
     btn.classList.add('secondary');
     return;
