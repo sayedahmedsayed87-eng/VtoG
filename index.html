@@ -119,15 +119,15 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .treeNote.retry{cursor:pointer;color:var(--button);font-weight:700}
 #settingsOverlay .addFolderFab{box-shadow:none} /* the popup body scrolls, which would clip these buttons' shadows */
 
-.folder-tree{max-height:340px;overflow-y:auto}
-.folderRowWrap{margin:0}
-.folder-row{display:flex;align-items:center;gap:8px;padding:7px 6px;cursor:pointer;border-radius:var(--r-ctl);border-bottom:1px solid var(--border)}
+.folder-tree{max-height:340px;overflow:auto}
+.folderRowWrap{margin:0;width:max-content;min-width:100%}
+.folder-row{display:flex;align-items:center;gap:4px;padding:6px 2px;cursor:pointer;border-radius:var(--r-ctl);border-bottom:1px solid var(--border)}
 .folder-row.selected{background:color-mix(in srgb,var(--button) 16%,transparent)}
 .folder-row.selected .label{font-weight:800;color:var(--button)}
-.folder-row .expand-arrow{width:34px;height:34px;display:flex;align-items:center;justify-content:center;color:var(--button);font-size:30px;font-weight:900;flex:none;border-radius:8px}
+.folder-row .expand-arrow{width:24px;height:24px;display:flex;align-items:center;justify-content:center;color:var(--button);font-size:20px;font-weight:900;flex:none;border-radius:7px}
 .folder-row .expand-arrow:active{background:color-mix(in srgb,var(--button) 14%,transparent)}
-.folder-row .expand-arrow-spacer{width:34px;flex:none}
-.folder-row .newFolderBtn{display:none;flex:none;width:auto;min-height:0;margin:0;padding:6px 10px;border-radius:var(--r-ctl);gap:5px;font-size:12.5px;font-weight:800;line-height:1.2;color:var(--button);background:color-mix(in srgb,var(--button) 14%,transparent);white-space:nowrap}
+.folder-row .expand-arrow-spacer{width:24px;flex:none}
+.folder-row .newFolderBtn{display:none;flex:none;width:auto;min-height:0;margin:0 0 0 auto;padding:6px 10px;border-radius:var(--r-ctl);gap:5px;font-size:12.5px;font-weight:800;line-height:1.2;color:var(--buttonText);background:var(--button);white-space:nowrap}
 .folder-row.selected .newFolderBtn{display:inline-flex}
 .newFolderBtn .nfPlus{font-weight:800;font-size:inherit}
 .newFolderDraft{padding-left:16px;margin:4px 0 8px}
@@ -146,7 +146,7 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .downloadHeader label{margin:0}
 .clearAllBtn{width:auto;min-height:0;margin:0;padding:7px 13px;border-radius:99px;background:color-mix(in srgb,var(--muted) 10%,transparent);color:var(--muted);border:1px solid var(--border);font-size:12.5px;font-weight:800}
 .clearAllBtn:active{transform:scale(.95)}
-.folder-row .label{flex:1;font-size:14.5px;min-width:0;overflow-wrap:anywhere}
+.folder-row .label{font-size:14.5px;white-space:nowrap}
 .folder-row.locked .label{color:var(--muted);cursor:default}
 .lockBadge{flex:none;color:var(--warning);font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:99px;background:color-mix(in srgb,var(--warning) 14%,transparent);white-space:nowrap}
 .children{padding-left:16px;display:none}
@@ -643,11 +643,21 @@ const initData = tg ? (tg.initData || '') : '';
 const tgUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : null;
 const chatId = tgUser ? tgUser.id : null;
 
-let selectedFolder = null; // { label, driveFolderId, path } — committed, shown on the main form
-let pendingFolder = null; // { label, driveFolderId, path } — highlighted inside the overlay, not yet confirmed
+let selectedFolder = null; // { label, driveFolderId, path, idPath } — committed, shown on the main form
+let pendingFolder = null; // { label, driveFolderId, path, idPath } — highlighted inside the overlay, not yet confirmed
 let autoFilledName = false; // true only while name-input's value is one WE set — cleared the instant the user types
 let selectedRowEl = null; // the currently highlighted row element inside the folder-picker tree
 let deepLinkScreen = null; // set from the ?screen= param when opened via one of the bot's two buttons — consumed once, right after auth, to skip Home and land straight on that screen
+
+// The tree can re-render a branch (background cache refresh, re-expanding a
+// collapsed folder, etc.) independently of the single selectedRowEl variable,
+// which can go stale and point at a node that's no longer the right one to
+// unmark. Querying the DOM directly for ".selected" is the only way to
+// guarantee there's never more than one highlighted row at a time, regardless
+// of how many separate render passes happened.
+function clearAllSelectedRows() {
+  document.querySelectorAll('#folder-tree .folder-row.selected').forEach(r => r.classList.remove('selected'));
+}
 
 // Shows a ✕ inside a text field whenever it has content, and clears it on
 // tap. Clearing re-dispatches a real 'input' event rather than duplicating
@@ -1755,12 +1765,16 @@ async function fetchYouTubeTitle(url, seq) {
 // ---- Folder picker (destination selection) ----
 document.getElementById('folder-select-btn').onclick = () => {
   // Start the overlay from whatever is already confirmed (if anything),
-  // rather than always resetting to "nothing selected" — the tree below
-  // re-highlights this same folder (see the selectedFolder check in
-  // buildFolderRow) and the preview line matches it too. The user is still
-  // completely free to tap a different folder to change it.
+  // rather than always resetting to "nothing selected". The tree below
+  // re-highlights and auto-expands down to this same folder (via
+  // revealState — the same mechanism used after creating a new folder) and
+  // the preview line matches it too. The user is still completely free to
+  // tap a different folder to change it.
   pendingFolder = selectedFolder;
-  selectedRowEl = null; // re-set by buildFolderRow once the matching row renders
+  selectedRowEl = null; // re-set once the matching row renders (or stays null if nothing matches)
+  revealState = (selectedFolder && Array.isArray(selectedFolder.idPath) && selectedFolder.idPath.length)
+    ? { ids: new Set(selectedFolder.idPath), targetId: selectedFolder.driveFolderId, targetName: null, parentId: null }
+    : null;
   const confirmBtn = document.getElementById('folderPickerConfirmBtn');
   confirmBtn.disabled = !selectedFolder;
   confirmBtn.textContent = 'Download here';
@@ -1842,6 +1856,7 @@ function buildFolderRow(folder, parentPath, parentIds) {
   const path = (parentPath || []).concat(folder.label); // full breadcrumb down to this folder
   const idPath = (parentIds || []).concat(folder.driveFolderId); // same chain, as Drive ids
   wrap.dataset.name = folder.label;
+  wrap.dataset.driveId = folder.driveFolderId;
 
   const row = document.createElement('div');
   row.className = 'folder-row' + (locked ? ' locked' : '');
@@ -1927,10 +1942,10 @@ function buildFolderRow(folder, parentPath, parentIds) {
   const selectThisFolder = () => {
     if (locked) return;
     closeActiveDraft();
-    if (selectedRowEl && selectedRowEl !== row) selectedRowEl.classList.remove('selected');
+    clearAllSelectedRows();
     row.classList.add('selected');
     selectedRowEl = row;
-    pendingFolder = { label: folder.label, driveFolderId: folder.driveFolderId, path };
+    pendingFolder = { label: folder.label, driveFolderId: folder.driveFolderId, path, idPath };
     const confirmBtn = document.getElementById('folderPickerConfirmBtn');
     confirmBtn.disabled = false;
     confirmBtn.textContent = 'Download here';
@@ -1948,7 +1963,8 @@ function buildFolderRow(folder, parentPath, parentIds) {
     };
   }
 
-  if (selectedFolder && selectedFolder.driveFolderId === folder.driveFolderId) {
+  if (pendingFolder && pendingFolder.driveFolderId === folder.driveFolderId) {
+    clearAllSelectedRows();
     row.classList.add('selected');
     selectedRowEl = row;
   }
@@ -1975,7 +1991,11 @@ function buildFolderRow(folder, parentPath, parentIds) {
   wrap.appendChild(row);
   wrap.appendChild(childrenBox);
 
-  // After a folder was just created: re-open the branch leading to it and select it.
+  // Re-open the branch leading to a target folder and select it — used both
+  // right after creating a new folder, and when the picker opens with an
+  // already-chosen destination (see folder-select-btn's onclick), so that
+  // folder is auto-expanded down to, highlighted, and scrolled into view
+  // instead of needing to be found by hand.
   if (revealState && !locked) {
     const parentId = idPath.length > 1 ? idPath[idPath.length - 2] : null;
     const isTarget = (revealState.targetId && folder.driveFolderId === revealState.targetId) ||
@@ -1983,7 +2003,7 @@ function buildFolderRow(folder, parentPath, parentIds) {
     if (isTarget) {
       revealState = null;
       selectThisFolder();
-      setTimeout(() => row.scrollIntoView({ block: 'nearest' }), 0);
+      setTimeout(() => row.scrollIntoView({ block: 'center' }), 0);
     } else if (hasChildren && revealState.ids.has(folder.driveFolderId)) {
       expandChildren();
     }
