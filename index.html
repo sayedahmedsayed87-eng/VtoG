@@ -90,6 +90,15 @@ input[type=text]:focus{outline:2px solid color-mix(in srgb,var(--button) 40%,tra
 
 button{width:100%;min-height:52px;margin-top:14px;padding:12px 16px;border:0;border-radius:var(--r-ctl);font:inherit;font-size:clamp(15px,4.2vw,16px);font-weight:800;color:var(--buttonText);background:var(--button);cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;gap:8px}
 button:disabled{opacity:.45;cursor:default}
+/* "Soft" disabled: looks disabled but still receives taps, so a tap can flash what's missing */
+button.blocked{opacity:.45;cursor:default}
+/* Red glow flash for a field that needs attention (shared by every input in the app) */
+@keyframes flashInvalid{
+  0%,100%{box-shadow:0 0 0 0 transparent}
+  25%,75%{box-shadow:0 0 0 3px color-mix(in srgb,var(--danger) 60%,transparent),0 0 16px 4px color-mix(in srgb,var(--danger) 50%,transparent)}
+  50%{box-shadow:0 0 0 1px color-mix(in srgb,var(--danger) 30%,transparent)}
+}
+.flash-invalid{animation:flashInvalid .42s ease-in-out 3;border-color:var(--danger)!important}
 button.danger{background:var(--danger)}
 button.success{background:var(--success)}
 button.fitBtn{width:auto;min-height:0;padding:10px 18px;margin-top:6px;border-radius:var(--r-ctl);font-size:14px}
@@ -399,7 +408,7 @@ button.folderPickBtn:active{transform:scale(.98)}
 
         <div id="identify-error" class="error-text hidden"></div>
 
-        <button id="identify-btn" disabled>Identify Video</button>
+        <button id="identify-btn" class="blocked" aria-disabled="true">Identify Video</button>
       </div>
     </section>
 
@@ -430,7 +439,7 @@ button.folderPickBtn:active{transform:scale(.98)}
 
       <div id="main-error" class="error-text hidden"></div>
 
-      <button id="download-btn" disabled>Download</button>
+      <button id="download-btn" class="blocked" aria-disabled="true">Download</button>
     </section>
 
   </section>
@@ -580,7 +589,7 @@ button.folderPickBtn:active{transform:scale(.98)}
       <div id="add-folder-error" class="error-text hidden"></div>
       <div class="confirmButtons">
         <button type="button" id="addFolderCancelBtn">Cancel</button>
-        <button type="button" id="add-folder-btn" disabled>Add folder</button>
+        <button type="button" id="add-folder-btn" class="blocked" aria-disabled="true">Add folder</button>
       </div>
     </div>
   </div>
@@ -750,6 +759,21 @@ function showError(elementId, message) {
 }
 function clearError(elementId) {
   document.getElementById(elementId).classList.add('hidden');
+}
+// Red glow flash around a field (input, folder box, button) that needs attention.
+function flashInvalid(el) {
+  if (!el) return;
+  el.classList.remove('flash-invalid');
+  void el.offsetWidth; // restart the animation if it is already running
+  el.classList.add('flash-invalid');
+  clearTimeout(el._flashTimer);
+  el._flashTimer = setTimeout(() => el.classList.remove('flash-invalid'), 1400);
+}
+// Looks disabled but stays tappable, so tapping it can flash what is missing.
+function setSoftBlocked(btn, blocked) {
+  btn.disabled = false;
+  btn.classList.toggle('blocked', !!blocked);
+  btn.setAttribute('aria-disabled', blocked ? 'true' : 'false');
 }
 function openOverlay(id) { document.getElementById(id).classList.remove('hidden'); }
 function closeOverlay(id) { document.getElementById(id).classList.add('hidden'); }
@@ -1517,7 +1541,7 @@ document.getElementById('backBtn').onclick = () => {
 // ---- Movie/Series Identifier ----
 wireClearButton('identify-url-input', 'clearIdentifyUrlBtn');
 function updateIdentifyEnabled() {
-  document.getElementById('identify-btn').disabled = !document.getElementById('identify-url-input').value.trim();
+  setSoftBlocked(document.getElementById('identify-btn'), !document.getElementById('identify-url-input').value.trim());
 }
 document.getElementById('identify-url-input').addEventListener('input', updateIdentifyEnabled);
 
@@ -1545,7 +1569,7 @@ function clearIdentifyField() {
 document.getElementById('identify-btn').onclick = async () => {
   clearError('identify-error');
   const url = document.getElementById('identify-url-input').value.trim();
-  if (!url) return;
+  if (!url) { flashInvalid(document.getElementById('identify-url-input')); return; }
 
   const btn = document.getElementById('identify-btn');
   setButtonLoading(btn, true, 'Sending…');
@@ -1695,7 +1719,7 @@ async function loadUsageReport() {
 function updateDownloadEnabled() {
   const url = document.getElementById('url-input').value.trim();
   const name = document.getElementById('name-input').value.trim();
-  document.getElementById('download-btn').disabled = !(url && name && selectedFolder);
+  setSoftBlocked(document.getElementById('download-btn'), !(url && name && selectedFolder));
 }
 document.getElementById('url-input').addEventListener('input', () => {
   updateDownloadEnabled();
@@ -1775,12 +1799,10 @@ document.getElementById('folder-select-btn').onclick = () => {
   revealState = (selectedFolder && Array.isArray(selectedFolder.idPath) && selectedFolder.idPath.length)
     ? { ids: new Set(selectedFolder.idPath), targetId: selectedFolder.driveFolderId, targetName: null, parentId: null }
     : null;
-  const confirmBtn = document.getElementById('folderPickerConfirmBtn');
-  confirmBtn.disabled = !selectedFolder;
-  confirmBtn.textContent = 'Download here';
   updatePathPreview(selectedFolder ? selectedFolder.path : null);
   openOverlay('folderPickerOverlay');
   loadFolderTree();
+  syncPickerConfirm(); // after the tree reset, so a leftover draft can't keep the button blocked
 };
 document.getElementById('folderPickerCloseBtn').onclick = () => closeOverlay('folderPickerOverlay');
 document.getElementById('folderTreeReloadBtn').onclick = () => loadFolderTree(true);
@@ -1811,6 +1833,7 @@ async function loadFolderTree(forceReload) {
       return;
     }
     folders.forEach(f => container.appendChild(buildFolderRow(f, [], [])));
+    syncPickerConfirm();
   };
 
   try {
@@ -1941,23 +1964,26 @@ function buildFolderRow(folder, parentPath, parentIds) {
   // what's inside the folder you just picked.
   const selectThisFolder = () => {
     if (locked) return;
+    // Now that the whole row is tappable, a stray tap on the row that owns the open
+    // "new folder" box must not silently throw the half-typed name away.
+    if (activeDraft && activeDraft.parentNode === wrap) return;
     closeActiveDraft();
     clearAllSelectedRows();
     row.classList.add('selected');
     selectedRowEl = row;
     pendingFolder = { label: folder.label, driveFolderId: folder.driveFolderId, path, idPath };
-    const confirmBtn = document.getElementById('folderPickerConfirmBtn');
-    confirmBtn.disabled = false;
-    confirmBtn.textContent = 'Download here';
+    syncPickerConfirm();
     updatePathPreview(path);
     if (hasChildren) expandChildren();
   };
-  if (!locked) label.onclick = selectThisFolder;
+  // The whole row (not just the name) selects the folder and reveals its subfolders.
+  if (!locked) row.onclick = selectThisFolder;
 
   // The arrow still toggles expand/collapse on its own, independent of
   // selection — so you can browse deeper without committing to a folder.
   if (hasChildren) {
-    arrow.onclick = () => {
+    arrow.onclick = e => {
+      e.stopPropagation(); // arrow only expands/collapses, without selecting
       if (childrenBox.classList.contains('open')) collapseChildren();
       else expandChildren();
     };
@@ -2016,9 +2042,37 @@ let activeDraft = null;   // the open "new folder" box, if any (only one at a ti
 let revealState = null;   // set after a create so the tree re-opens to, and selects, the new folder
 let folderOpBusy = false; // true while the app is locked for a create
 
+function setActiveDraft(box) { activeDraft = box; syncPickerConfirm(); }
+// A draft whose box was wiped by a tree reload no longer counts as open.
+function draftOpen() {
+  if (activeDraft && !activeDraft.isConnected) activeDraft = null;
+  return !!activeDraft;
+}
+// "Download here" is blocked while a new-folder box is open (or while no folder is picked).
+function syncPickerConfirm() {
+  const btn = document.getElementById('folderPickerConfirmBtn');
+  const blocked = draftOpen();
+  btn.disabled = !pendingFolder;
+  btn.classList.toggle('blocked', blocked);
+  btn.setAttribute('aria-disabled', blocked ? 'true' : 'false');
+}
+// Tapped "Download here" while the new-folder box is open: glow red and say how to continue.
+function nudgeDraft() {
+  const box = activeDraft;
+  if (!box) return;
+  const note = box.querySelector('.nfHint');
+  if (note) {
+    note.textContent = folderOpBusy
+      ? 'Creating the folder… please wait.'
+      : 'You’re still creating a new folder. Press Confirm to create it, or Cancel to discard it — then you can download here.';
+    note.classList.remove('hidden');
+  }
+  flashInvalid(box.querySelector('.newFolderBox'));
+  box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
 function closeActiveDraft() {
   if (folderOpBusy) return;
-  if (activeDraft) { activeDraft.remove(); activeDraft = null; }
+  if (activeDraft) { activeDraft.remove(); setActiveDraft(null); }
 }
 function setAppLock(on) {
   folderOpBusy = on;
@@ -2045,13 +2099,14 @@ async function openNewFolderDraft(ctx) {
         '</div>' +
       '</div>' +
       '<div class="error-text hidden"></div>' +
+      '<div class="error-text nfHint hidden"></div>' +
       '<div class="newFolderActions">' +
         '<button type="button" class="nfConfirm">Confirm</button>' +
         '<button type="button" class="secondary nfCancel">Cancel</button>' +
       '</div>' +
     '</div>';
   wrap.insertBefore(box, childrenBox);
-  activeDraft = box;
+  setActiveDraft(box);
 
   const input = box.querySelector('input');
   const clearBtn = box.querySelector('.clearFieldBtn');
@@ -2070,12 +2125,12 @@ async function openNewFolderDraft(ctx) {
   box.querySelector('.nfConfirm').onclick = async () => {
     if (folderOpBusy) return;
     const name = input.value.replace(/\s+/g, ' ').trim();
-    if (!name) { showErr('Please enter a folder name.'); input.focus(); return; }
+    if (!name) { showErr('Please enter a folder name.'); flashInvalid(input); input.focus(); return; }
     const lower = name.toLowerCase();
     const sameName = n => String(n || '').trim().toLowerCase() === lower;
     const dupMsg = 'A folder named “' + name + '” already exists here. Choose a different name.';
     if (Array.from(childrenBox.querySelectorAll(':scope > .folderRowWrap')).some(w => sameName(w.dataset.name))) {
-      showErr(dupMsg); input.focus(); return;
+      showErr(dupMsg); flashInvalid(input); input.focus(); return;
     }
 
     // Lock the app and swap the buttons for a live status bar.
@@ -2104,7 +2159,7 @@ async function openNewFolderDraft(ctx) {
       FolderCache.clearAll(chatId);
       revealState = { ids: new Set(idPath), targetId: res.driveFolderId || res.id || null, targetName: lower, parentId: folder.driveFolderId };
       box.remove();
-      activeDraft = null;
+      setActiveDraft(null);
       await loadFolderTree();
       revealState = null;
       setAppLock(false);
@@ -2116,6 +2171,7 @@ async function openNewFolderDraft(ctx) {
         input.disabled = false;
         bar.replaceWith(actions);
         showErr(dupMsg);
+        flashInvalid(input);
         input.focus();
         return;
       }
@@ -2127,7 +2183,7 @@ async function openNewFolderDraft(ctx) {
       errBar.style.marginTop = '0';
       errBar.innerHTML = '<span>⚠️</span><div><div class="infoTitle">Folder was not created</div><div class="infoText"></div></div>';
       errBar.querySelector('.infoText').textContent = reason + ' — nothing was added. Tap to dismiss.';
-      const dismiss = () => { box.remove(); if (activeDraft === box) activeDraft = null; };
+      const dismiss = () => { box.remove(); if (activeDraft === box) setActiveDraft(null); };
       errBar.onclick = dismiss;
       inner.appendChild(errBar);
       setTimeout(dismiss, 8000);
@@ -2138,6 +2194,7 @@ async function openNewFolderDraft(ctx) {
 }
 
 document.getElementById('folderPickerConfirmBtn').onclick = () => {
+  if (draftOpen()) { nudgeDraft(); return; }
   if (!pendingFolder) return; // stays disabled until a folder is picked, but guard anyway
   selectedFolder = pendingFolder;
   updateMainPathPreview(selectedFolder.path);
@@ -2449,7 +2506,7 @@ function escapeHtml(s) {
 
 function updateAddFolderEnabled() {
   const link = document.getElementById('new-folder-link').value.trim();
-  document.getElementById('add-folder-btn').disabled = !extractFolderIdFromLink(link) || previewConflictActive;
+  setSoftBlocked(document.getElementById('add-folder-btn'), !extractFolderIdFromLink(link) || previewConflictActive);
 }
 
 function conflictMessage(conflict) {
@@ -2562,7 +2619,7 @@ document.getElementById('add-folder-btn').onclick = async () => {
   clearError('add-folder-error');
   const link = document.getElementById('new-folder-link').value.trim();
   const folderId = extractFolderIdFromLink(link);
-  if (!folderId || previewConflictActive) return;
+  if (!folderId || previewConflictActive) { flashInvalid(document.getElementById('new-folder-link')); return; }
 
   const btn = document.getElementById('add-folder-btn');
   setButtonLoading(btn, true, 'Adding folder…');
@@ -2600,7 +2657,17 @@ document.getElementById('download-btn').onclick = async () => {
   clearError('main-error');
   const url = document.getElementById('url-input').value.trim();
   const name = document.getElementById('name-input').value.trim();
-  if (!url || !name || !selectedFolder) return;
+  if (!url || !name || !selectedFolder) {
+    const urlEl = document.getElementById('url-input');
+    const nameEl = document.getElementById('name-input');
+    const missing = [];
+    if (!url) missing.push(urlEl);
+    if (!name) missing.push(nameEl);
+    if (!selectedFolder) missing.push(document.getElementById('folder-select-btn'));
+    missing.forEach(flashInvalid);
+    if (missing.length === 1 && missing[0].tagName === 'INPUT') missing[0].focus();
+    return;
+  }
 
   const btn = document.getElementById('download-btn');
   setButtonLoading(btn, true, 'Adding to queue…');
