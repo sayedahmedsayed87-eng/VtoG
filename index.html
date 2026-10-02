@@ -144,6 +144,14 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .newFolderRow{display:flex;align-items:center;gap:8px}
 .newFolderRow .clearableInputWrap{flex:1;min-width:0}
 .newFolderActions{display:flex;gap:10px;margin-top:10px}
+/* Fixed-size box: one reserved single-line warning slot, and status/error bars that replace
+   the buttons at the exact same height, so the box never grows or shrinks. */
+.newFolderBox{box-sizing:border-box;overflow:hidden}
+.nfWarn{height:18px;margin-top:6px;font-size:12.5px;line-height:18px;font-weight:600;color:var(--danger);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.newFolderBox .infoBar{box-sizing:border-box;height:44px;margin-top:10px;padding:0 12px;overflow:hidden}
+.newFolderBox .infoBar>div{min-width:0;flex:1}
+.newFolderBox .infoTitle,.newFolderBox .infoText{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+.newFolderBox .infoBar.nfFill{height:100%;margin-top:0}
 .newFolderActions button{flex:1;margin:0;min-height:44px;font-size:14.5px}
 .infoBar{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;border-radius:var(--r-ctl);background:color-mix(in srgb,var(--button) 10%,transparent)}
 .infoBar.error{background:color-mix(in srgb,var(--danger) 12%,transparent);cursor:pointer}
@@ -813,7 +821,7 @@ function callApiJsonp(action, params) {
       clearTimeout(timer);
     };
     window[cbName] = (data) => { cleanup(); resolve(data); };
-    script.onerror = () => { cleanup(); reject(new Error('Could not reach the server')); };
+    script.onerror = () => { cleanup(); reject(new Error('No connection')); };
     script.src = `${APPS_SCRIPT_URL}?${query}`;
     document.body.appendChild(script);
   });
@@ -1446,7 +1454,7 @@ async function checkRegistration() {
   try {
     result = await callApi('checkUser', { chatId });
   } catch (e) {
-    return showLoadError('Could not reach the server (' + (e && e.message ? e.message : 'unknown error') + ').');
+    return showLoadError('No connection.');
   }
   if (result.error) return showLoadError(result.error);
 
@@ -1495,7 +1503,7 @@ async function autoRegister(username) {
   try {
     result = await callApi('registerUser', { chatId, username });
   } catch (e) {
-    return showLoadError('Could not reach the server (' + (e && e.message ? e.message : 'unknown error') + ').');
+    return showLoadError('No connection.');
   }
   if (result.error) return showLoadError(result.error);
 
@@ -1579,7 +1587,7 @@ document.getElementById('identify-btn').onclick = async () => {
     result = await callApi('submitIdentify', { chatId, url });
   } catch (e) {
     setButtonLoading(btn, false);
-    showIdentifyResult(false, 'Something went wrong', 'Could not reach the server (' + (e && e.message ? e.message : 'unknown error') + ').');
+    showIdentifyResult(false, 'Something went wrong', 'No connection.');
     return;
   }
 
@@ -1695,11 +1703,11 @@ async function loadUsageReport() {
   try {
     result = await callApi('getUserStats', { chatId });
   } catch (e) {
-    body.innerHTML = '<div class="emptyNote">Could not load usage data.</div>';
+    body.innerHTML = '<div class="emptyNote">Usage unavailable.</div>';
     return;
   }
   if (isErrorResult(result)) {
-    body.innerHTML = '<div class="emptyNote">Usage report isn\'t available yet.</div>';
+    body.innerHTML = '<div class="emptyNote">Usage not available yet.</div>';
     return;
   }
   usageReportLoaded = true;
@@ -1829,7 +1837,7 @@ async function loadFolderTree(forceReload) {
     shown = true;
     container.innerHTML = '';
     if (!folders.length) {
-      container.innerHTML = '<div class="emptyNote">No folders yet — add one from Settings (the ⚙️ at the top right).</div>';
+      container.innerHTML = '<div class="emptyNote">No folders yet — add one in ⚙️ Settings.</div>';
       return;
     }
     folders.forEach(f => container.appendChild(buildFolderRow(f, [], [])));
@@ -1848,8 +1856,8 @@ async function loadFolderTree(forceReload) {
 // Message for a failed folder-list load: a server-side error is shown as-is
 // (with a hint for a stale session); a transport failure gets the generic note.
 function folderLoadErrorText_(e) {
-  if (e && e.isServerError) return e.message + (e.message === 'Unauthorized' ? ' — try reloading the app.' : '');
-  return 'Could not load folders.';
+  if (e && e.isServerError) return e.message + (e.message === 'Unauthorized' ? ' — reload app.' : '');
+  return 'Folders failed to load.';
 }
 
 // Shared "something didn't load" note with a Try again button, used
@@ -1904,7 +1912,7 @@ function buildFolderRow(folder, parentPath, parentIds) {
   label.appendChild(icon);
   label.appendChild(document.createTextNode(' ' + folder.label));
   if (locked) {
-    label.title = "This folder isn't shared with Editor access anymore — choose another folder, or fix sharing in Drive.";
+    label.title = "Not shared with Editor access.";
   }
 
   const childrenBox = document.createElement('div');
@@ -1932,7 +1940,7 @@ function buildFolderRow(folder, parentPath, parentIds) {
         // and offer a way to bypass the cache and check live rather than
         // leaving the person guessing whether anything is actually broken.
         childrenBox.appendChild(buildRetryNote(
-          failed ? 'Could not load subfolders.' : 'No subfolders found here — the folder may have changed in Drive.',
+          failed ? 'Subfolders failed to load.' : 'No subfolders found.',
           () => expandChildren(true)
         ));
         // A genuine empty result is left as "loaded" (it's the real current
@@ -2060,12 +2068,9 @@ function syncPickerConfirm() {
 function nudgeDraft() {
   const box = activeDraft;
   if (!box) return;
-  const note = box.querySelector('.nfHint');
+  const note = box.querySelector('.nfWarn');
   if (note) {
-    note.textContent = folderOpBusy
-      ? 'Creating the folder… please wait.'
-      : 'You’re still creating a new folder. Press Confirm to create it, or Cancel to discard it — then you can download here.';
-    note.classList.remove('hidden');
+    note.textContent = folderOpBusy ? 'Creating… please wait.' : 'Press Confirm or Cancel first.';
   }
   flashInvalid(box.querySelector('.newFolderBox'));
   box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -2098,8 +2103,7 @@ async function openNewFolderDraft(ctx) {
           '<button type="button" class="clearFieldBtn hidden" aria-label="Clear name">✕</button>' +
         '</div>' +
       '</div>' +
-      '<div class="error-text hidden"></div>' +
-      '<div class="error-text nfHint hidden"></div>' +
+      '<div class="nfWarn" aria-live="polite"></div>' +
       '<div class="newFolderActions">' +
         '<button type="button" class="nfConfirm">Confirm</button>' +
         '<button type="button" class="secondary nfCancel">Cancel</button>' +
@@ -2110,11 +2114,11 @@ async function openNewFolderDraft(ctx) {
 
   const input = box.querySelector('input');
   const clearBtn = box.querySelector('.clearFieldBtn');
-  const errEl = box.querySelector('.error-text');
+  const errEl = box.querySelector('.nfWarn');
   const inner = box.querySelector('.newFolderBox');
   const actions = box.querySelector('.newFolderActions');
-  const showErr = t => { errEl.textContent = t; errEl.classList.remove('hidden'); };
-  const hideErr = () => errEl.classList.add('hidden');
+  const showErr = t => { errEl.textContent = t; errEl.title = t; };
+  const hideErr = () => { errEl.textContent = ''; errEl.removeAttribute('title'); };
   const syncClear = () => clearBtn.classList.toggle('hidden', !input.value);
 
   input.addEventListener('input', () => { syncClear(); hideErr(); });
@@ -2125,10 +2129,10 @@ async function openNewFolderDraft(ctx) {
   box.querySelector('.nfConfirm').onclick = async () => {
     if (folderOpBusy) return;
     const name = input.value.replace(/\s+/g, ' ').trim();
-    if (!name) { showErr('Please enter a folder name.'); flashInvalid(input); input.focus(); return; }
+    if (!name) { showErr('Enter a folder name.'); flashInvalid(input); input.focus(); return; }
     const lower = name.toLowerCase();
     const sameName = n => String(n || '').trim().toLowerCase() === lower;
-    const dupMsg = 'A folder named “' + name + '” already exists here. Choose a different name.';
+    const dupMsg = 'Name already exists.';
     if (Array.from(childrenBox.querySelectorAll(':scope > .folderRowWrap')).some(w => sameName(w.dataset.name))) {
       showErr(dupMsg); flashInvalid(input); input.focus(); return;
     }
@@ -2146,16 +2150,16 @@ async function openNewFolderDraft(ctx) {
 
     let duplicate = false;
     try {
-      setStatus('Checking that the name is free…');
+      setStatus('Checking name…');
       const existing = await callApi('listChildFolders', { chatId, parentId: folder.driveFolderId });
       if (isErrorResult(existing)) throw new Error(existing.error);
       if (Array.isArray(existing) && existing.some(f => sameName(f.label))) { duplicate = true; throw new Error('duplicate'); }
 
-      setStatus('Creating “' + name + '” in Drive…');
+      setStatus('Creating folder…');
       const res = await callApi('createFolder', { chatId, parentId: folder.driveFolderId, name });
-      if (!res || res.error) throw new Error(res && res.error ? res.error : 'The server did not confirm the new folder.');
+      if (!res || res.error) throw new Error(res && res.error ? res.error : 'Not confirmed by server.');
 
-      setStatus('Updating the folder list…');
+      setStatus('Updating list…');
       FolderCache.clearAll(chatId);
       revealState = { ids: new Set(idPath), targetId: res.driveFolderId || res.id || null, targetName: lower, parentId: folder.driveFolderId };
       box.remove();
@@ -2179,10 +2183,10 @@ async function openNewFolderDraft(ctx) {
       const reason = e && e.message ? e.message : 'unknown error';
       inner.innerHTML = '';
       const errBar = document.createElement('div');
-      errBar.className = 'infoBar error';
-      errBar.style.marginTop = '0';
-      errBar.innerHTML = '<span>⚠️</span><div><div class="infoTitle">Folder was not created</div><div class="infoText"></div></div>';
-      errBar.querySelector('.infoText').textContent = reason + ' — nothing was added. Tap to dismiss.';
+      errBar.className = 'infoBar error nfFill';
+      errBar.innerHTML = '<span>⚠️</span><div><div class="infoTitle">Not created · tap to dismiss</div><div class="infoText"></div></div>';
+      errBar.querySelector('.infoText').textContent = reason;
+      errBar.title = reason;
       const dismiss = () => { box.remove(); if (activeDraft === box) setActiveDraft(null); };
       errBar.onclick = dismiss;
       inner.appendChild(errBar);
@@ -2190,6 +2194,7 @@ async function openNewFolderDraft(ctx) {
     }
   };
 
+  inner.style.height = inner.offsetHeight + 'px'; // freeze at the current size
   input.focus();
 }
 
@@ -2242,7 +2247,7 @@ async function loadManageFolders(forceReload) {
     container.dataset.sig = sig;
     container.innerHTML = '';
     if (!folders.length) {
-      container.innerHTML = '<div class="emptyNote">No folders yet — tap "Add folder" above.</div>';
+      container.innerHTML = '<div class="emptyNote">No folders yet — tap Add folder.</div>';
       return;
     }
     folders.forEach(f => container.appendChild(buildManageFolderCard(f)));
@@ -2291,7 +2296,7 @@ async function loadTreeChildren(folder, box, forceReload) {
     shown = true;
     box.innerHTML = '';
     if (!children.length) {
-      box.appendChild(treeNote('No subfolders found — tap to check again', () => loadTreeChildren(folder, box, true)));
+      box.appendChild(treeNote('No subfolders — tap to retry', () => loadTreeChildren(folder, box, true)));
       return; // not marked loaded, so the next open checks again
     }
     children.forEach(c => box.appendChild(buildTreeNode(c)));
@@ -2303,7 +2308,7 @@ async function loadTreeChildren(folder, box, forceReload) {
   } catch (e) {
     if (shown) return; // a background refresh failed, but the cached branch is still showing
     box.innerHTML = '';
-    box.appendChild(treeNote('Could not load subfolders — tap to retry', () => loadTreeChildren(folder, box, true)));
+    box.appendChild(treeNote('Load failed — tap to retry', () => loadTreeChildren(folder, box, true)));
   }
 }
 
@@ -2348,7 +2353,7 @@ function buildTreeNode(folder) {
     const lock = document.createElement('span');
     lock.className = 'treeCount';
     lock.textContent = '🔒';
-    lock.title = "This folder isn't shared with Editor access anymore.";
+    lock.title = "Not shared with Editor access.";
     row.appendChild(lock);
   }
 
@@ -2399,7 +2404,7 @@ function buildManageFolderCard(folder) {
     const lock = document.createElement('span');
     lock.className = 'treeCount';
     lock.textContent = '🔒';
-    lock.title = "This folder isn't shared with Editor access anymore.";
+    lock.title = "Not shared with Editor access.";
     card.appendChild(lock);
   }
 
@@ -2511,11 +2516,11 @@ function updateAddFolderEnabled() {
 
 function conflictMessage(conflict) {
   const messages = {
-    exact: `Already mapped as "${conflict.label}".`,
-    already_inside: `This folder is already a subfolder of "${conflict.label}" — no need to add it separately.`,
-    would_be_redundant: `"${conflict.label}" is a subfolder of this one. Consider removing that entry.`
+    exact: `Already added as "${conflict.label}".`,
+    already_inside: `Already inside "${conflict.label}".`,
+    would_be_redundant: `"${conflict.label}" is inside this folder.`
   };
-  return messages[conflict.conflict] || 'This folder conflicts with an existing one.';
+  return messages[conflict.conflict] || 'Conflicts with an existing folder.';
 }
 
 document.getElementById('reloadFoldersBtn').onclick = () => loadManageFolders(true);
@@ -2584,7 +2589,7 @@ function schedulePreview() {
       result = await callApi('previewFolder', { chatId, folderId });
     } catch (e) {
       if (seq !== previewSeq) return;
-      box.innerHTML = '<div class="emptyNote">Could not check that folder.</div>';
+      box.innerHTML = '<div class="emptyNote">Couldn\'t check folder.</div>';
       return;
     }
     if (seq !== previewSeq) return; // superseded by a newer link
@@ -2600,14 +2605,14 @@ function schedulePreview() {
     updateAddFolderEnabled();
 
     if (!result || result.error) {
-      box.innerHTML = '<div class="emptyNote">' + escapeHtml((result && result.error) || 'Could not check that folder.') + '</div>';
+      box.innerHTML = '<div class="emptyNote">' + escapeHtml((result && result.error) || 'Couldn\'t check folder.') + '</div>';
       return;
     }
     const count = result.subfolderCount || 0;
     box.innerHTML =
       '<div class="folderPreviewName">' + escapeHtml(result.label) + '</div>' +
       '<div class="folderPreviewSub">' + count + (count === 1 ? ' subfolder' : ' subfolders') + '</div>' +
-      (result.writable === false ? '<div class="folderPreviewWarn">⚠️ Not shared with Editor access yet</div>' : '');
+      (result.writable === false ? '<div class="folderPreviewWarn">⚠️ Needs Editor access</div>' : '');
   }, 450);
 }
 document.getElementById('new-folder-link').addEventListener('input', () => {
@@ -2629,7 +2634,7 @@ document.getElementById('add-folder-btn').onclick = async () => {
   } catch (e) {
     FolderCache.clearAll(chatId); // the add may have landed even though the reply didn't
     setButtonLoading(btn, false);
-    showError('add-folder-error', 'Could not reach the server (' + (e && e.message ? e.message : 'unknown error') + ').');
+    showError('add-folder-error', 'No connection.');
     updateAddFolderEnabled();
     return;
   }
@@ -2679,7 +2684,7 @@ document.getElementById('download-btn').onclick = async () => {
     });
   } catch (e) {
     setButtonLoading(btn, false);
-    showError('main-error', 'Could not reach the server (' + (e && e.message ? e.message : 'unknown error') + ').');
+    showError('main-error', 'No connection.');
     updateDownloadEnabled();
     return;
   }
