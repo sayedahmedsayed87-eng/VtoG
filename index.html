@@ -267,11 +267,29 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .uqNum{font-size:clamp(26px,8vw,34px);font-weight:900;line-height:1;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
 .uqNum small{margin-left:3px;font-size:12px;font-weight:800;letter-spacing:0;color:var(--muted)}
 .uqSub{margin-top:5px;font-size:11px;font-weight:700;line-height:1.3;color:var(--muted)}
-.uqTable{width:100%;margin-top:18px;border-collapse:collapse}
-.uqTable td{padding:10px 0;border-top:1px solid var(--border);font-size:14px;font-weight:700;vertical-align:middle}
+.uqTable{width:100%;margin-top:0;border-collapse:collapse}
+.uqTable td{padding:7px 0;font-size:14px;font-weight:700;vertical-align:middle}
 .uqTable td:first-child{width:34px;font-size:18px;line-height:1}
 .uqTable td:last-child{text-align:right;font-weight:850;font-variant-numeric:tabular-nums}
 .uqTable tr.off{opacity:.4;filter:grayscale(1)}
+.uqHeadLife{margin-top:24px}
+.uqTable tr.uqTotal td{padding-top:12px;border-top:3px solid color-mix(in srgb,var(--muted) 35%,transparent);font-weight:850}
+.uqMini{width:100%;margin-top:16px;border-collapse:collapse}
+.uqMini td{padding:3px 0;font-size:11.5px;font-weight:700;line-height:1.3;vertical-align:middle}
+.uqMini td:first-child{width:22px;font-size:12px}
+.uqMini td:last-child{text-align:right;font-weight:850;font-variant-numeric:tabular-nums}
+.uqMini tr.off{opacity:.4;filter:grayscale(1)}
+/* Unlimited users: gold stars drift outward from the ring */
+.uqStars{position:absolute;inset:0;pointer-events:none}
+.uqStar{position:absolute;width:var(--s);height:var(--s);opacity:0;filter:drop-shadow(0 0 4px #f5c542);animation:uqEmit var(--d) ease-out var(--t) infinite}
+.uqStar:before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,#fff3b0,#f5c542);clip-path:polygon(50% 0,61% 39%,100% 50%,61% 61%,50% 100%,39% 61%,0 50%,39% 39%)}
+@keyframes uqEmit{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.3) rotate(0)}
+  15%{opacity:1}
+  55%{opacity:.9}
+  100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1) rotate(140deg)}
+}
+@media (prefers-reduced-motion:reduce){.uqStar{animation:none}}
 
 .usageRefreshBtn{margin-left:auto;padding:6px 12px 6px 10px;font-size:12.5px}
 .usageRefreshBtn:disabled{opacity:.45}
@@ -1740,10 +1758,10 @@ let usageReportLoaded = false;
 // Rows of the per-type video table. Flip `live` to true (and give it a stat key)
 // when a type starts being counted — until then it stays greyed out at 0.
 const USAGE_VIDEO_TYPES = [
-  { emoji: '☁️', label: 'Videos To GDrive',     stat: 'totalVideosDownloaded', live: true },
-  { emoji: '🔍', label: 'Videos identified',    live: false },
-  { emoji: '🎵', label: 'Videos to MP3',        live: false },
-  { emoji: '🎞️', label: 'Videos To Image Seq.', live: false }
+  { emoji: '☁️', label: 'Videos To GDrive',     short: 'GDrive',     key: 'VGD', stat: 'totalVideosDownloaded', live: true },
+  { emoji: '🔍', label: 'Videos identified',    short: 'Identified', live: false },
+  { emoji: '🎵', label: 'Videos to MP3',        short: 'MP3',        live: false },
+  { emoji: '🎞️', label: 'Videos To Image Seq.', short: 'Image Seq.', live: false }
 ];
 
 function fmtUsageDate(v) {
@@ -1754,16 +1772,17 @@ function fmtGb(n) { return String(Number(n.toFixed(2))); }
 
 // Ring: green -> yellow down the right side, yellow -> red up the left side, revealed
 // clockwise from the top up to `pct`. The glow is a blurred copy of the same arc, so it
-// always matches the stroke colour.
-function usageRingSvg(pct) {
+// always matches the stroke colour. Unlimited users get a full gold ring instead.
+function usageRingSvg(pct, unlimited) {
+  const [c1, c2, c3] = unlimited ? ['#ffe27a', '#f5c542', '#f0a020'] : ['#2ecc71', '#f5c542', '#e74c3c'];
   const arcs = pct > 0 ? `
     <g filter="url(#uqGlow)" opacity=".85"><g mask="url(#uqMask)"><use href="#uqArcs"/></g></g>
     <g mask="url(#uqMask)"><use href="#uqArcs"/></g>` : '';
   return `
     <svg viewBox="0 0 120 120" aria-hidden="true">
       <defs>
-        <linearGradient id="uqGradR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2ecc71"/><stop offset="1" stop-color="#f5c542"/></linearGradient>
-        <linearGradient id="uqGradL" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#f5c542"/><stop offset="1" stop-color="#e74c3c"/></linearGradient>
+        <linearGradient id="uqGradR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient>
+        <linearGradient id="uqGradL" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="${c2}"/><stop offset="1" stop-color="${c3}"/></linearGradient>
         <filter id="uqGlow" filterUnits="userSpaceOnUse" x="-30" y="-30" width="180" height="180"><feGaussianBlur stdDeviation="6"/></filter>
         <mask id="uqMask" maskUnits="userSpaceOnUse" x="-30" y="-30" width="180" height="180">
           <circle cx="60" cy="60" r="48" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="butt" pathLength="100" stroke-dasharray="${pct} 100" transform="rotate(-90 60 60)"/>
@@ -1778,10 +1797,23 @@ function usageRingSvg(pct) {
     </svg>`;
 }
 
+// Stars placed around the ring (percent of the ring box); each drifts outward, fades and
+// spins, on its own random timing so the effect never looks like a loop.
+function usageStarsHtml() {
+  const N = 16;
+  let h = '';
+  for (let i = 0; i < N; i++) {
+    const th = (i / N) * 2 * Math.PI + (Math.random() - .5) * .3;
+    const sx = Math.sin(th), cy = -Math.cos(th);
+    h += `<span class="uqStar" style="left:${(50 + 45 * sx).toFixed(1)}%;top:${(50 + 45 * cy).toFixed(1)}%;--dx:${(sx * 26).toFixed(1)}px;--dy:${(cy * 26).toFixed(1)}px;--s:${(9 + Math.random() * 8).toFixed(1)}px;--d:${(2 + Math.random() * 1.6).toFixed(2)}s;--t:-${(Math.random() * 3).toFixed(2)}s"></span>`;
+  }
+  return `<div class="uqStars" aria-hidden="true">${h}</div>`;
+}
+
 // ---- Usage report cache (per device, localStorage) ----
 // Shown instantly on later opens; only the Refresh button (or a finished quota
 // period) goes back to the server.
-function usageCacheKey_(id) { return 'usage1:' + id; }
+function usageCacheKey_(id) { return 'usage2:' + id; }
 function getCachedUsage(id) {
   try {
     const d = JSON.parse(localStorage.getItem(usageCacheKey_(id)) || 'null');
@@ -1795,7 +1827,7 @@ function setCachedUsage(id, data) {
   try { localStorage.setItem(usageCacheKey_(id), JSON.stringify(data)); } catch (e) { /* best-effort only */ }
 }
 function clearCachedUsage(id) {
-  try { localStorage.removeItem(usageCacheKey_(id)); } catch (e) { /* ignore */ }
+  try { localStorage.removeItem(usageCacheKey_(id)); localStorage.removeItem('usage1:' + id); } catch (e) { /* ignore */ }
 }
 
 function renderUsage(result) {
@@ -1803,15 +1835,18 @@ function renderUsage(result) {
   const used = Number(r.gbUsedThisPeriod) || 0;
   const hasLimit = typeof r.quotaGb === 'number' && r.quotaGb >= 0;
   const unlimited = r.quotaGb === -1;
-  const pct = hasLimit && r.quotaGb > 0 ? Math.min(100, used / r.quotaGb * 100) : 0;
-  const sub = unlimited ? 'Unlimited'
+  const pct = unlimited ? 100 : hasLimit && r.quotaGb > 0 ? Math.min(100, used / r.quotaGb * 100) : 0;
+  const sub = unlimited ? '∞ Unlimited'
     : hasLimit ? `${fmtGb(Math.max(0, r.quotaGb - used))} GB left of ${fmtGb(r.quotaGb)} GB`
     : '';
 
-  const rows = USAGE_VIDEO_TYPES.map(t => {
-    const n = t.live ? (Number(r[t.stat] ?? r.totalVideos) || 0) : 0;
-    return `<tr class="${t.live ? '' : 'off'}"><td>${t.emoji}</td><td>${t.label}</td><td>${n}</td></tr>`;
-  }).join('');
+  const periodN = t => t.live ? (Number(r.periodVideos && r.periodVideos[t.key]) || 0) : 0;
+  const lifeN = t => t.live ? (Number(r[t.stat] ?? r.totalVideos) || 0) : 0;
+  const cls = t => t.live ? '' : 'off';
+
+  const mini = USAGE_VIDEO_TYPES.map(t => `<tr class="${cls(t)}"><td>${t.emoji}</td><td>${t.short}</td><td>${periodN(t)}</td></tr>`).join('');
+  const rows = USAGE_VIDEO_TYPES.map(t => `<tr class="${cls(t)}"><td>${t.emoji}</td><td>${t.label}</td><td>${lifeN(t)}</td></tr>`).join('');
+  const total = USAGE_VIDEO_TYPES.reduce((sum, t) => sum + lifeN(t), 0);
 
   document.getElementById('uqContent').innerHTML = `
     <h3 class="uqHead">Usage quota</h3>
@@ -1819,16 +1854,19 @@ function renderUsage(result) {
       <div class="uqDates">
         <div><div class="uqLabel">📅 Start</div><div class="uqValue">${fmtUsageDate(r.periodStart)}</div></div>
         <div><div class="uqLabel">🏁 End</div><div class="uqValue">${fmtUsageDate(r.periodEnd)}</div></div>
+        <table class="uqMini"><tbody>${mini}</tbody></table>
       </div>
       <div class="uqRingWrap">
-        ${usageRingSvg(pct)}
+        ${usageRingSvg(pct, unlimited)}
+        ${unlimited ? usageStarsHtml() : ''}
         <div class="uqCenter">
           <div class="uqNum">${fmtGb(used)}<small>GB</small></div>
           <div class="uqSub">${sub}</div>
         </div>
       </div>
     </div>
-    <table class="uqTable"><tbody>${rows}</tbody></table>`;
+    <h3 class="uqHead uqHeadLife">Lifetime downloads</h3>
+    <table class="uqTable"><tbody>${rows}<tr class="uqTotal"><td>📦</td><td>Total downloads</td><td>${total}</td></tr></tbody></table>`;
 }
 
 function setUsageBusy(busy) {
