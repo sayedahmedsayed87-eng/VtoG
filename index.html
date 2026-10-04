@@ -1758,10 +1758,10 @@ let usageReportLoaded = false;
 // Rows of the per-type video table. Flip `live` to true (and give it a stat key)
 // when a type starts being counted — until then it stays greyed out at 0.
 const USAGE_VIDEO_TYPES = [
-  { emoji: '☁️', label: 'Videos To GDrive',     short: 'GDrive',     key: 'VGD', stat: 'totalVideosDownloaded', live: true },
-  { emoji: '🔍', label: 'Videos identified',    short: 'Identified', live: false },
-  { emoji: '🎵', label: 'Videos to MP3',        short: 'MP3',        live: false },
-  { emoji: '🎞️', label: 'Videos To Image Seq.', short: 'Image Seq.', live: false }
+  { emoji: '☁️', label: 'Videos To GDrive',     short: 'GDrive',     key: 'VGD', live: true },
+  { emoji: '🔍', label: 'Videos identified',    short: 'Identified', key: 'VID', live: false },
+  { emoji: '🎵', label: 'Videos to MP3',        short: 'MP3',        key: 'MP3', live: false },
+  { emoji: '🎞️', label: 'Videos To Image Seq.', short: 'Image Seq.', key: 'SEQ', live: false }
 ];
 
 function fmtUsageDate(v) {
@@ -1810,7 +1810,7 @@ function usageStarsHtml() {
 // ---- Usage report cache (per device, localStorage) ----
 // Shown instantly on later opens; only the Refresh button (or a finished quota
 // period) goes back to the server.
-function usageCacheKey_(id) { return 'usage2:' + id; }
+function usageCacheKey_(id) { return 'usage3:' + id; }
 function getCachedUsage(id) {
   try {
     const d = JSON.parse(localStorage.getItem(usageCacheKey_(id)) || 'null');
@@ -1824,7 +1824,7 @@ function setCachedUsage(id, data) {
   try { localStorage.setItem(usageCacheKey_(id), JSON.stringify(data)); } catch (e) { /* best-effort only */ }
 }
 function clearCachedUsage(id) {
-  try { localStorage.removeItem(usageCacheKey_(id)); localStorage.removeItem('usage1:' + id); } catch (e) { /* ignore */ }
+  try { localStorage.removeItem(usageCacheKey_(id)); localStorage.removeItem('usage1:' + id); localStorage.removeItem('usage2:' + id); } catch (e) { /* ignore */ }
 }
 
 function renderUsage(result) {
@@ -1839,7 +1839,7 @@ function renderUsage(result) {
     : '';
 
   const periodN = t => t.live ? (Number(r.periodVideos && r.periodVideos[t.key]) || 0) : 0;
-  const lifeN = t => t.live ? (Number(r[t.stat] ?? r.totalVideos) || 0) : 0;
+  const lifeN = t => t.live ? (Number(r.lifetimeVideos && r.lifetimeVideos[t.key]) || 0) : 0;
   const cls = t => t.live ? '' : 'off';
 
   const mini = USAGE_VIDEO_TYPES.map(t => `<tr class="${cls(t)}"><td>${t.emoji}</td><td>${t.short}</td><td>${periodN(t)}</td></tr>`).join('');
