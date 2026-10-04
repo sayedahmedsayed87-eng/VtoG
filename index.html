@@ -255,6 +255,33 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .settingsCategory[open] summary:before{content:"\2212"}
 .settingsCategoryBody{margin-top:12px;margin-left:12px;padding-left:14px;border-left:2px solid color-mix(in srgb,var(--button) 22%,transparent)}
 
+/* Usage quota: dates on the left, glowing ring on the right, then the per-type video table */
+.uqHead{margin:0 0 12px;font-size:15px;font-weight:850}
+.uqGrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.7fr);gap:12px;align-items:center}
+.uqDates{display:flex;flex-direction:column;gap:16px}
+.uqLabel{font-size:12px;font-weight:700;color:var(--muted)}
+.uqValue{margin-top:2px;font-size:14px;font-weight:800;line-height:1.3}
+.uqRingWrap{position:relative;width:min(100%,170px);aspect-ratio:1;margin:0 auto}
+.uqRingWrap svg{display:block;width:100%;height:100%;overflow:visible}
+.uqCenter{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none}
+.uqNum{font-size:clamp(26px,8vw,34px);font-weight:900;line-height:1;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.uqNum small{margin-left:3px;font-size:12px;font-weight:800;letter-spacing:0;color:var(--muted)}
+.uqSub{margin-top:5px;font-size:11px;font-weight:700;line-height:1.3;color:var(--muted)}
+.uqTable{width:100%;margin-top:18px;border-collapse:collapse}
+.uqTable td{padding:10px 0;border-top:1px solid var(--border);font-size:14px;font-weight:700;vertical-align:middle}
+.uqTable td:first-child{width:34px;font-size:18px;line-height:1}
+.uqTable td:last-child{text-align:right;font-weight:850;font-variant-numeric:tabular-nums}
+.uqTable tr.off{opacity:.4;filter:grayscale(1)}
+
+.usageRefreshBtn{margin-left:auto;padding:6px 12px 6px 10px;font-size:12.5px}
+.usageRefreshBtn:disabled{opacity:.45}
+.uqWrap{position:relative;min-height:300px}
+.uqContent{transition:opacity .2s,filter .2s}
+.uqWrap.busy .uqContent{opacity:.3;filter:grayscale(1);pointer-events:none}
+.uqOverlay{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:0 12px}
+.uqWrap.busy .uqOverlay{display:flex}
+.uqSpinner{width:58px;height:58px;border-width:5px}
+.uqOverlayText{font-size:14px;font-weight:800;line-height:1.4}
 /* Toggle switches used by the User settings preferences */
 .toggleRow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0}
 .toggleRow:first-child{padding-top:0}
@@ -510,6 +537,23 @@ button.folderPickBtn:active{transform:scale(.98)}
       <div class="settingsPane active" id="settingsPaneUser">
 
         <details class="settingsCategory" open>
+          <summary>
+            <span>Usage report</span>
+            <button type="button" id="usageRefreshBtn" class="addFolderFab usageRefreshBtn" aria-label="Refresh usage report"><span>🔄</span><span>Refresh</span></button>
+          </summary>
+          <div class="settingsCategoryBody" id="usageReportBody">
+            <div class="uqWrap" id="uqWrap">
+              <div class="uqContent" id="uqContent"></div>
+              <div class="uqOverlay" role="status" aria-live="polite">
+                <span class="spinner dark uqSpinner"></span>
+                <div class="uqOverlayText">Please wait until the data syncs…</div>
+              </div>
+            </div>
+            <div class="error-text" id="uqMsg"></div>
+          </div>
+        </details>
+
+        <details class="settingsCategory">
           <summary>Preferences</summary>
           <div class="settingsCategoryBody">
             <div class="toggleRow">
@@ -533,17 +577,10 @@ button.folderPickBtn:active{transform:scale(.98)}
               </label>
             </div>
             <div class="clearCacheBlock">
-              <p class="settingsHint clearCacheHint">Clear local cache removes the folder lists, sign-in shortcut and remembered folder saved on this device. Your Drive files and downloads are not affected.</p>
+              <p class="settingsHint clearCacheHint">Clear local cache removes the folder lists, usage report, sign-in shortcut and remembered folder saved on this device. Your Drive files and downloads are not affected.</p>
               <button type="button" id="clearLocalCacheBtn" class="danger fitBtn">Clear local cache</button>
               <div id="clearCacheMsg" class="message hidden" style="margin-top:8px;margin-bottom:0"></div>
             </div>
-          </div>
-        </details>
-
-        <details class="settingsCategory">
-          <summary>Usage report</summary>
-          <div class="settingsCategoryBody" id="usageReportBody">
-            <div class="emptyNote loadingRow"><span class="spinner dark"></span>Loading…</div>
           </div>
         </details>
 
@@ -1685,6 +1722,8 @@ document.getElementById('clearCacheConfirmBtn').onclick = () => {
   FolderCache.clearAll(chatId);
   clearCachedProfile(chatId);
   clearRememberedFolder(chatId);
+  clearCachedUsage(chatId);
+  usageReportLoaded = false; // next Settings open fetches fresh data
   const msg = document.getElementById('clearCacheMsg');
   msg.textContent = 'Local cache cleared on this device.';
   msg.classList.remove('hidden');
@@ -1692,36 +1731,153 @@ document.getElementById('clearCacheConfirmBtn').onclick = () => {
 };
 
 // ---- User settings pane: usage report ----
-// getUserStats isn't part of the API contract yet — this renders whatever
-// comes back and falls back to a friendly note if the server doesn't
-// recognize the action yet, rather than breaking the rest of Settings.
+// getUserStats (Users.js) returns { periodStart, periodEnd, gbUsedThisPeriod,
+// quotaGb (-1 = unlimited), totalVideosDownloaded, ... }. Falls back to a
+// friendly note if the server doesn't recognize the action, rather than
+// breaking the rest of Settings.
 let usageReportLoaded = false;
-async function loadUsageReport() {
-  if (usageReportLoaded) return; // one fetch per app session is enough — it's not live-changing data
-  const body = document.getElementById('usageReportBody');
-  let result;
+
+// Rows of the per-type video table. Flip `live` to true (and give it a stat key)
+// when a type starts being counted — until then it stays greyed out at 0.
+const USAGE_VIDEO_TYPES = [
+  { emoji: '☁️', label: 'Videos To GDrive',     stat: 'totalVideosDownloaded', live: true },
+  { emoji: '🔍', label: 'Videos identified',    live: false },
+  { emoji: '🎵', label: 'Videos to MP3',        live: false },
+  { emoji: '🎞️', label: 'Videos To Image Seq.', live: false }
+];
+
+function fmtUsageDate(v) {
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? '—' : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+function fmtGb(n) { return String(Number(n.toFixed(2))); }
+
+// Ring: green -> yellow down the right side, yellow -> red up the left side, revealed
+// clockwise from the top up to `pct`. The glow is a blurred copy of the same arc, so it
+// always matches the stroke colour.
+function usageRingSvg(pct) {
+  const arcs = pct > 0 ? `
+    <g filter="url(#uqGlow)" opacity=".85"><g mask="url(#uqMask)"><use href="#uqArcs"/></g></g>
+    <g mask="url(#uqMask)"><use href="#uqArcs"/></g>` : '';
+  return `
+    <svg viewBox="0 0 120 120" aria-hidden="true">
+      <defs>
+        <linearGradient id="uqGradR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2ecc71"/><stop offset="1" stop-color="#f5c542"/></linearGradient>
+        <linearGradient id="uqGradL" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#f5c542"/><stop offset="1" stop-color="#e74c3c"/></linearGradient>
+        <filter id="uqGlow" filterUnits="userSpaceOnUse" x="-30" y="-30" width="180" height="180"><feGaussianBlur stdDeviation="6"/></filter>
+        <mask id="uqMask" maskUnits="userSpaceOnUse" x="-30" y="-30" width="180" height="180">
+          <circle cx="60" cy="60" r="48" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="butt" pathLength="100" stroke-dasharray="${pct} 100" transform="rotate(-90 60 60)"/>
+        </mask>
+        <g id="uqArcs" fill="none" stroke-width="11" stroke-linecap="butt">
+          <path d="M60 12 A48 48 0 0 1 60 108" stroke="url(#uqGradR)"/>
+          <path d="M60 108 A48 48 0 0 1 60 12" stroke="url(#uqGradL)"/>
+        </g>
+      </defs>
+      <circle cx="60" cy="60" r="48" fill="none" stroke="currentColor" stroke-opacity=".12" stroke-width="11"/>
+      ${arcs}
+    </svg>`;
+}
+
+// ---- Usage report cache (per device, localStorage) ----
+// Shown instantly on later opens; only the Refresh button (or a finished quota
+// period) goes back to the server.
+function usageCacheKey_(id) { return 'usage1:' + id; }
+function getCachedUsage(id) {
+  try {
+    const d = JSON.parse(localStorage.getItem(usageCacheKey_(id)) || 'null');
+    if (!d) return null;
+    const end = new Date(d.periodEnd);
+    if (!isNaN(end.getTime()) && Date.now() >= end.getTime()) return null; // period rolled over — numbers are stale
+    return d;
+  } catch (e) { return null; }
+}
+function setCachedUsage(id, data) {
+  try { localStorage.setItem(usageCacheKey_(id), JSON.stringify(data)); } catch (e) { /* best-effort only */ }
+}
+function clearCachedUsage(id) {
+  try { localStorage.removeItem(usageCacheKey_(id)); } catch (e) { /* ignore */ }
+}
+
+function renderUsage(result) {
+  const r = result || {};
+  const used = Number(r.gbUsedThisPeriod) || 0;
+  const hasLimit = typeof r.quotaGb === 'number' && r.quotaGb >= 0;
+  const unlimited = r.quotaGb === -1;
+  const pct = hasLimit && r.quotaGb > 0 ? Math.min(100, used / r.quotaGb * 100) : 0;
+  const sub = unlimited ? 'Unlimited'
+    : hasLimit ? `${fmtGb(Math.max(0, r.quotaGb - used))} GB left of ${fmtGb(r.quotaGb)} GB`
+    : '';
+
+  const rows = USAGE_VIDEO_TYPES.map(t => {
+    const n = t.live ? (Number(r[t.stat] ?? r.totalVideos) || 0) : 0;
+    return `<tr class="${t.live ? '' : 'off'}"><td>${t.emoji}</td><td>${t.label}</td><td>${n}</td></tr>`;
+  }).join('');
+
+  document.getElementById('uqContent').innerHTML = `
+    <h3 class="uqHead">Usage quota</h3>
+    <div class="uqGrid">
+      <div class="uqDates">
+        <div><div class="uqLabel">📅 Start</div><div class="uqValue">${fmtUsageDate(r.periodStart)}</div></div>
+        <div><div class="uqLabel">🏁 End</div><div class="uqValue">${fmtUsageDate(r.periodEnd)}</div></div>
+      </div>
+      <div class="uqRingWrap">
+        ${usageRingSvg(pct)}
+        <div class="uqCenter">
+          <div class="uqNum">${fmtGb(used)}<small>GB</small></div>
+          <div class="uqSub">${sub}</div>
+        </div>
+      </div>
+    </div>
+    <table class="uqTable"><tbody>${rows}</tbody></table>`;
+}
+
+function setUsageBusy(busy) {
+  document.getElementById('uqWrap').classList.toggle('busy', busy);
+  document.getElementById('usageRefreshBtn').disabled = busy;
+}
+
+let usageFetching = false;
+async function loadUsageReport(force) {
+  if (usageFetching) return;
+  if (!force) {
+    if (usageReportLoaded) return;
+    const cached = getCachedUsage(chatId);
+    if (cached) { renderUsage(cached); usageReportLoaded = true; return; }
+  }
+
+  const hadData = usageReportLoaded;
+  const msg = document.getElementById('uqMsg');
+  msg.textContent = '';
+  if (!hadData) renderUsage(null); // greyed-out placeholder behind the loading overlay
+  usageFetching = true;
+  setUsageBusy(true);
+
+  let result, failed = '';
   try {
     result = await callApi('getUserStats', { chatId });
+    if (isErrorResult(result)) failed = 'Usage not available yet.';
   } catch (e) {
-    body.innerHTML = '<div class="emptyNote">Usage unavailable.</div>';
-    return;
+    failed = 'Usage unavailable.';
   }
-  if (isErrorResult(result)) {
-    body.innerHTML = '<div class="emptyNote">Usage not available yet.</div>';
-    return;
+
+  if (failed) {
+    if (hadData) msg.textContent = 'Couldn\u2019t refresh \u2014 showing saved data.';
+    else document.getElementById('uqContent').innerHTML = `<div class="emptyNote">${failed}</div>`;
+  } else {
+    setCachedUsage(chatId, result);
+    renderUsage(result);
+    usageReportLoaded = true;
   }
-  usageReportLoaded = true;
-  const gbUsed = typeof result.gbUsedThisPeriod === 'number' ? result.gbUsedThisPeriod.toFixed(2) : '—';
-  const quota = typeof result.quotaGb === 'number' ? (result.quotaGb === -1 ? 'Unlimited' : result.quotaGb + ' GB') : '—';
-  const totalVideos = typeof result.totalVideos === 'number' ? result.totalVideos : '—';
-  const lifetimeGb = typeof result.totalGbLifetime === 'number' ? result.totalGbLifetime.toFixed(2) : '—';
-  body.innerHTML = `
-    <div class="card">
-      <div class="row"><div class="rowIcon">📊</div><div class="rowText"><div class="rowLabel">Used this period</div><div class="rowValue">${gbUsed} GB of ${quota}</div></div></div>
-      <div class="row"><div class="rowIcon">🎬</div><div class="rowText"><div class="rowLabel">Videos downloaded</div><div class="rowValue">${totalVideos}</div></div></div>
-      <div class="row"><div class="rowIcon">💾</div><div class="rowText"><div class="rowLabel">Lifetime total</div><div class="rowValue">${lifetimeGb} GB</div></div></div>
-    </div>`;
+  usageFetching = false;
+  setUsageBusy(false);
 }
+
+// The button sits inside <summary>, so keep a tap on it from also folding the section.
+document.getElementById('usageRefreshBtn').onclick = (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  loadUsageReport(true);
+};
 
 // ---- Download form validation ----
 function updateDownloadEnabled() {
