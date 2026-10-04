@@ -1855,7 +1855,7 @@ async function loadUsageReport(force) {
   let result, failed = '';
   try {
     result = await callApi('getUserStats', { chatId });
-    if (isErrorResult(result)) failed = 'Usage not available yet.';
+    if (isErrorResult(result)) failed = 'Usage not available' + (result && result.error ? ': ' + result.error : ' yet.');
   } catch (e) {
     failed = 'Usage unavailable.';
   }
