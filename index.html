@@ -274,11 +274,16 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .uqTable tr.off{opacity:.5;filter:grayscale(1)}
 .uqHeadLife{margin-top:24px}
 .uqTable tr.uqTotal td{padding-top:12px;border-top:3px solid color-mix(in srgb,var(--muted) 35%,transparent);font-weight:850}
-.uqMini{width:100%;margin-top:16px;border-collapse:collapse}
-.uqMini td{padding:3px 0;font-size:11.5px;font-weight:700;line-height:1.3;vertical-align:middle}
-.uqMini td:first-child{width:22px;font-size:12px}
-.uqMini td:last-child{text-align:right;font-weight:850;font-variant-numeric:tabular-nums}
-.uqMini tr.off{opacity:.5;filter:grayscale(1)}
+.uqPeriod{width:100%;margin-top:18px;border-collapse:collapse}
+.uqPeriod th{padding:0 0 6px;font-size:11px;font-weight:700;text-align:right;white-space:nowrap;color:var(--muted)}
+.uqPeriod td{padding:5px 0;font-size:12.5px;font-weight:700;vertical-align:middle}
+.uqPeriod td:first-child{width:24px;font-size:14px;line-height:1}
+.uqPeriod th:nth-child(n+2),.uqPeriod td:nth-child(n+3){width:24%}
+.uqPeriod td:nth-child(n+3){text-align:right;font-weight:850;font-variant-numeric:tabular-nums}
+.uqPeriod tr.off{opacity:.5;filter:grayscale(1)}
+.uqLifeGb{margin:0 0 14px}
+.uqBig{margin-top:4px;font-size:26px;font-weight:900;line-height:1.1;letter-spacing:-.4px;font-variant-numeric:tabular-nums}
+.uqBig small{margin-left:3px;font-size:12px;font-weight:800;letter-spacing:0;color:var(--muted)}
 /* Unlimited users: gold stars drift outward from the ring */
 .uqStars{position:absolute;inset:0;pointer-events:none}
 .uqStar{position:absolute;width:var(--s);height:var(--s);opacity:0;filter:drop-shadow(0 0 4px #f5c542);animation:uqEmit var(--d) ease-out var(--t) infinite}
@@ -1810,7 +1815,7 @@ function usageStarsHtml() {
 // ---- Usage report cache (per device, localStorage) ----
 // Shown instantly on later opens; only the Refresh button (or a finished quota
 // period) goes back to the server.
-function usageCacheKey_(id) { return 'usage3:' + id; }
+function usageCacheKey_(id) { return 'usage4:' + id; }
 function getCachedUsage(id) {
   try {
     const d = JSON.parse(localStorage.getItem(usageCacheKey_(id)) || 'null');
@@ -1824,7 +1829,7 @@ function setCachedUsage(id, data) {
   try { localStorage.setItem(usageCacheKey_(id), JSON.stringify(data)); } catch (e) { /* best-effort only */ }
 }
 function clearCachedUsage(id) {
-  try { localStorage.removeItem(usageCacheKey_(id)); localStorage.removeItem('usage1:' + id); localStorage.removeItem('usage2:' + id); } catch (e) { /* ignore */ }
+  try { localStorage.removeItem(usageCacheKey_(id)); localStorage.removeItem('usage1:' + id); localStorage.removeItem('usage2:' + id); localStorage.removeItem('usage3:' + id); } catch (e) { /* ignore */ }
 }
 
 function renderUsage(result) {
@@ -1839,20 +1844,20 @@ function renderUsage(result) {
     : '';
 
   const periodN = t => t.live ? (Number(r.periodVideos && r.periodVideos[t.key]) || 0) : 0;
+  const queuedN = t => t.live ? (Number(r.queued && r.queued[t.key]) || 0) : 0;
   const lifeN = t => t.live ? (Number(r.lifetimeVideos && r.lifetimeVideos[t.key]) || 0) : 0;
   const cls = t => t.live ? '' : 'off';
 
-  const mini = USAGE_VIDEO_TYPES.map(t => `<tr class="${cls(t)}"><td>${t.emoji}</td><td>${t.short}</td><td>${periodN(t)}</td></tr>`).join('');
+  const periodRows = USAGE_VIDEO_TYPES.map(t => `<tr class="${cls(t)}"><td>${t.emoji}</td><td>${t.short}</td><td>${queuedN(t)}</td><td>${periodN(t)}</td></tr>`).join('');
   const rows = USAGE_VIDEO_TYPES.map(t => `<tr class="${cls(t)}"><td>${t.emoji}</td><td>${t.label}</td><td>${lifeN(t)}</td></tr>`).join('');
   const total = USAGE_VIDEO_TYPES.reduce((sum, t) => sum + lifeN(t), 0);
 
   document.getElementById('uqContent').innerHTML = `
-    <h3 class="uqHead">Usage quota</h3>
+    <h3 class="uqHead">Quota Period</h3>
     <div class="uqGrid">
       <div class="uqDates">
         <div><div class="uqLabel">📅 Start</div><div class="uqValue">${fmtUsageDate(r.periodStart)}</div></div>
         <div><div class="uqLabel">🏁 End</div><div class="uqValue">${fmtUsageDate(r.periodEnd)}</div></div>
-        <table class="uqMini"><tbody>${mini}</tbody></table>
       </div>
       <div class="uqRingWrap">
         ${usageRingSvg(leftPct, tier.color)}
@@ -1863,7 +1868,13 @@ function renderUsage(result) {
         </div>
       </div>
     </div>
-    <h3 class="uqHead uqHeadLife">Lifetime downloads</h3>
+    <table class="uqPeriod"><thead><tr><th colspan="2"></th><th>In queue</th><th>Uploaded</th></tr></thead><tbody>${periodRows}</tbody></table>
+
+    <h3 class="uqHead uqHeadLife">Usage Lifetime</h3>
+    <div class="uqLifeGb">
+      <div class="uqLabel">Lifetime GBs usage · download &amp; upload</div>
+      <div class="uqBig">${fmtGb(Number(r.totalGbLifetime) || 0)}<small>GB</small></div>
+    </div>
     <table class="uqTable"><tbody>${rows}<tr class="uqTotal"><td>📦</td><td>Total downloads</td><td>${total}</td></tr></tbody></table>`;
 }
 
