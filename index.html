@@ -440,17 +440,18 @@ button.folderPickBtn:active{transform:scale(.98)}
           <span class="homeEmoji">📥</span>
           <span class="homeLabel">Video to Gdrive</span>
         </button>
-        <button type="button" id="homeMp3Btn" class="homeBtn locked" disabled aria-label="Video to MP3 — coming soon">
+        <button type="button" id="homeMp3Btn" class="homeBtn">
           <span class="homeEmoji">🎵</span>
           <span class="homeLabel">Video to MP3</span>
-          <span class="comingSoonBadge">Coming soon</span>
         </button>
-        <button type="button" id="homeImageSeqBtn" class="homeBtn locked" disabled aria-label="Video to Image Sequence — coming soon">
+        <button type="button" id="homeImageSeqBtn" class="homeBtn">
           <span class="homeEmoji">🖼️</span>
           <span class="homeLabel">Video to Image Sequence</span>
-          <span class="comingSoonBadge">Coming soon</span>
         </button>
-        <div class="homeCell" aria-hidden="true"></div>
+        <button type="button" id="homeCaptionBtn" class="homeBtn">
+          <span class="homeEmoji">💬</span>
+          <span class="homeLabel">Video's Caption</span>
+        </button>
         <div class="homeCell" aria-hidden="true"></div>
       </div>
     </section>
@@ -526,7 +527,7 @@ button.folderPickBtn:active{transform:scale(.98)}
 <!-- Queued confirmation overlay -->
 <div id="queuedOverlay" class="help-overlay hidden">
   <div class="help-inner glow-success" style="text-align:center">
-    <div class="icon success" style="margin:0 auto 12px">📥</div>
+    <div class="icon success" id="queuedIcon" style="margin:0 auto 12px">📥</div>
     <h2>Added to the queue</h2>
     <p class="message" id="queuedMsg">We'll send you a message on Telegram as soon as it's ready.</p>
     <button type="button" id="queuedCloseBtn">Got it</button>
@@ -724,6 +725,7 @@ let selectedFolder = null; // { label, driveFolderId, path, idPath } — committ
 let pendingFolder = null; // { label, driveFolderId, path, idPath } — highlighted inside the overlay, not yet confirmed
 let autoFilledName = false; // true only while name-input's value is one WE set — cleared the instant the user types
 let selectedRowEl = null; // the currently highlighted row element inside the folder-picker tree
+let deepLinkMode = 'gdrive'; // which job type the shared link/name/folder form is for when deepLinkScreen is 'screen-app'
 let deepLinkScreen = null; // set from the ?screen= param when opened via one of the bot's two buttons — consumed once, right after auth, to skip Home and land straight on that screen
 
 // The tree can re-render a branch (background cache refresh, re-expanding a
@@ -1429,7 +1431,7 @@ window.addEventListener('DOMContentLoaded', () => {
 async function init() {
   const params = new URLSearchParams(window.location.search);
   const prefillUrl = params.get('url');
-  const screenParam = params.get('screen'); // 'identify' or 'download' — set by the bot's two link buttons
+  const screenParam = params.get('screen'); // 'identify', 'download', 'imgseq', 'mp3' or 'caption' — set by the bot's link buttons
   if (prefillUrl) {
     if (screenParam === 'identify') {
       deepLinkScreen = 'screen-identify';
@@ -1438,6 +1440,7 @@ async function init() {
       input.dispatchEvent(new Event('input', { bubbles: true })); // shows the X-clear button and enables Identify Video
     } else {
       deepLinkScreen = 'screen-app';
+      deepLinkMode = { imgseq: 'imgseq', mp3: 'mp3', caption: 'caption' }[screenParam] || 'gdrive';
       const input = document.getElementById('url-input');
       input.value = prefillUrl;
       input.dispatchEvent(new Event('input', { bubbles: true })); // shows the X-clear button and kicks off the YouTube title fetch
@@ -1584,10 +1587,34 @@ document.getElementById('retryUsernameBtn').onclick = () => {
 // ---- Home navigation ----
 // Lands on whichever screen the bot's link button pointed at (consumed once,
 // right after auth succeeds) — otherwise the normal Home launcher.
+// One form (link + name + folder), four kinds of job. Only the wording and the API action
+// change: setJobMode() must be called BEFORE showScreen('screen-app') so the title is right.
+const JOB_MODES = {
+  gdrive:  { title: 'Video To G-Drive',    api: 'submitDownload',  btn: 'Download',        confirm: 'Download here',     icon: '📥' },
+  mp3:     { title: 'Video To MP3',        api: 'submitMp3',       btn: 'Convert to MP3',  confirm: 'Save MP3 here',     icon: '🎵' },
+  imgseq:  { title: 'Video To Image Seq.', api: 'submitImageSeq',  btn: 'Extract Images',  confirm: 'Save images here',  icon: '🖼️' },
+  caption: { title: "Video's Caption",     api: 'submitCaption',   btn: 'Get Caption',     confirm: 'Save caption here', icon: '💬' }
+};
+let jobMode = 'gdrive';
+function setJobMode(mode) {
+  jobMode = JOB_MODES[mode] ? mode : 'gdrive';
+  const m = JOB_MODES[jobMode];
+  SCREEN_TITLES['screen-app'] = m.title;
+  const btn = document.getElementById('download-btn');
+  btn.innerHTML = m.btn;
+  delete btn.dataset.originalHtml; // setButtonLoading would otherwise restore the old label
+  document.getElementById('folderPickerConfirmBtn').textContent = m.confirm;
+  document.getElementById('queuedIcon').textContent = m.icon;
+}
+function openJobScreen(mode) {
+  setJobMode(mode);
+  showScreen('screen-app');
+  loadFolderTree();
+}
+
 function enterHomeOrDeepLink() {
   if (deepLinkScreen === 'screen-app') {
-    showScreen('screen-app');
-    loadFolderTree();
+    openJobScreen(deepLinkMode);
   } else if (deepLinkScreen === 'screen-identify') {
     showScreen('screen-identify');
   } else {
@@ -1595,10 +1622,10 @@ function enterHomeOrDeepLink() {
   }
   deepLinkScreen = null;
 }
-document.getElementById('homeGdriveBtn').onclick = () => {
-  showScreen('screen-app');
-  loadFolderTree();
-};
+document.getElementById('homeGdriveBtn').onclick = () => openJobScreen('gdrive');
+document.getElementById('homeMp3Btn').onclick = () => openJobScreen('mp3');
+document.getElementById('homeImageSeqBtn').onclick = () => openJobScreen('imgseq');
+document.getElementById('homeCaptionBtn').onclick = () => openJobScreen('caption');
 document.getElementById('homeIdentifyBtn').onclick = () => {
   showScreen('screen-identify');
 };
@@ -1765,8 +1792,8 @@ let usageReportLoaded = false;
 const USAGE_VIDEO_TYPES = [
   { emoji: '☁️', label: 'Videos To GDrive',     short: 'GDrive',     key: 'VGD', live: true },
   { emoji: '🔍', label: 'Videos identified',    short: 'Identified', key: 'VID', live: false },
-  { emoji: '🎵', label: 'Videos to MP3',        short: 'MP3',        key: 'MP3', live: false },
-  { emoji: '🎞️', label: 'Videos To Image Seq.', short: 'Image Seq.', key: 'SEQ', live: false }
+  { emoji: '🎵', label: 'Videos to MP3',        short: 'MP3',        key: 'MP3', live: true },
+  { emoji: '🎞️', label: 'Videos To Image Seq.', short: 'Image Seq.', key: 'SEQ', live: true }
 ];
 
 function fmtUsageDate(v) {
@@ -2882,7 +2909,7 @@ document.getElementById('download-btn').onclick = async () => {
 
   let result;
   try {
-    result = await callApi('submitDownload', {
+    result = await callApi(JOB_MODES[jobMode].api, {
       chatId, url, customName: name, destFolderId: selectedFolder.driveFolderId
     });
   } catch (e) {
