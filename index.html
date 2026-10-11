@@ -74,7 +74,7 @@ label:first-of-type,.formLabel:first-of-type{margin-top:0}
 input[type=text]{width:100%;padding:11px 13px;border-radius:var(--r-ctl);border:1px solid var(--border);background:var(--bg);color:var(--text);font:inherit;font-size:14.5px}
 input[type=text]:focus{outline:2px solid color-mix(in srgb,var(--button) 40%,transparent);outline-offset:1px}
 .folder-select-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lockedConfirmBtn{width:100%;margin-top:14px}
+.lockedConfirmBtn{flex:none;width:100%;margin-top:14px}
 .nameInputWrap{position:relative}
 .nameInputWrap input{width:100%;box-sizing:border-box;padding-right:38px}
 .clearableInputWrap{position:relative}
@@ -515,8 +515,9 @@ button.folderPickBtn:active{transform:scale(.98)}
     <div id="folderPathPreview" class="pathPreview placeholder">No folder selected yet</div>
     <div class="help-body">
       <div class="folder-tree" id="folder-tree"></div>
-      <button type="button" id="folderPickerConfirmBtn" class="lockedConfirmBtn" disabled>Download here</button>
     </div>
+    <!-- Footer: outside the scrollable .help-body so it can never scroll out of view -->
+    <button type="button" id="folderPickerConfirmBtn" class="lockedConfirmBtn" disabled>Download here</button>
   </div>
 </div>
 
