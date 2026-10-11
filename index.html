@@ -76,17 +76,14 @@ input[type=text]:focus{outline:2px solid color-mix(in srgb,var(--button) 40%,tra
 .folder-select-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lockedConfirmBtn{width:100%;margin-top:14px}
 .nameInputWrap{position:relative}
-.nameInputWrap input{width:100%;box-sizing:border-box;padding-right:64px}
-.editNameBtn{position:absolute;right:34px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:17px;line-height:1;cursor:pointer;padding:6px;border-radius:8px}
-.editNameBtn:active{background:var(--border)}
-.editNameBtn.hidden{display:none}
+.nameInputWrap input{width:100%;box-sizing:border-box;padding-right:38px}
 /* Video-to-MP3: "use the video's own name" checkbox above the name field */
 .checkRow{display:flex;align-items:center;gap:10px;margin:0 0 9px}
 .checkRow input{width:20px;height:20px;margin:0;flex:none;accent-color:var(--button);cursor:pointer}
 .checkRow label{display:block;margin:0;font-size:13.5px;font-weight:750;color:var(--text);cursor:pointer;line-height:1.3}
 /* Locked = greyed out, but the field stays readonly (not disabled) so a long title can still be scrolled/selected */
 .nameInputWrap.locked input{opacity:.7;background:color-mix(in srgb,var(--muted) 10%,var(--bg));padding-right:13px;cursor:default}
-.nameInputWrap.locked .editNameBtn,.nameInputWrap.locked .clearFieldBtn{display:none!important}
+.nameInputWrap.locked .clearFieldBtn{display:none!important}
 .nameInputWrap input{text-overflow:clip;white-space:nowrap}
 .clearableInputWrap{position:relative}
 .clearableInputWrap input{width:100%;box-sizing:border-box;padding-right:38px}
@@ -498,7 +495,6 @@ button.folderPickBtn:active{transform:scale(.98)}
       </div>
       <div class="nameInputWrap">
         <input type="text" id="name-input" placeholder="Video name" dir="auto" autocomplete="off" autocapitalize="off" spellcheck="false">
-        <button type="button" id="editNameBtn" class="editNameBtn hidden" aria-label="Edit name">✏️</button>
         <button type="button" id="clearNameBtn" class="clearFieldBtn hidden" aria-label="Clear name">✕</button>
       </div>
 
@@ -2006,7 +2002,6 @@ function applyNameMode() {
       autoFilledName = false;
     }
     manualName = '';
-    document.getElementById('clearNameBtn').classList.toggle('hidden', !nameInput.value || autoFilledName);
   }
   nameLocked = locked;
 
@@ -2018,7 +2013,7 @@ function applyNameMode() {
     nameInput.scrollLeft = 0;
     autoFilledName = false;
   }
-  updateEditNameVisibility();
+  syncClearNameBtn();
 }
 document.getElementById('useVideoNameChk').addEventListener('change', () => {
   applyNameMode();
@@ -2044,22 +2039,16 @@ document.getElementById('url-input').addEventListener('input', () => {
 });
 document.getElementById('name-input').addEventListener('input', () => {
   autoFilledName = false; // user is typing their own name now — stop overwriting it
-  updateEditNameVisibility();
+  syncClearNameBtn();
   updateDownloadEnabled();
 });
 
-// Pencil icon appears only while the name field shows a name WE filled in —
-// it's the cue that "this was guessed, tap to change it". It disappears the
-// moment the user types, since at that point it's already their own name.
-function updateEditNameVisibility() {
+// The ✕ shows whenever the name field has text (including a name we filled in from the
+// video title) and hides while the field is locked to the video's own name.
+function syncClearNameBtn() {
   const nameInput = document.getElementById('name-input');
-  document.getElementById('editNameBtn').classList.toggle('hidden', !(autoFilledName && nameInput.value.trim()));
+  document.getElementById('clearNameBtn').classList.toggle('hidden', !nameInput.value || nameLocked);
 }
-document.getElementById('editNameBtn').onclick = () => {
-  const nameInput = document.getElementById('name-input');
-  nameInput.focus();
-  nameInput.select(); // whole guessed name is selected so typing straight away overwrites it
-};
 
 // ---- Auto-fill the "Save as" name from the pasted link ----
 // Only YouTube exposes a public, no-auth title lookup (oEmbed) that works
@@ -2107,7 +2096,7 @@ async function fetchYouTubeTitle(url, seq) {
 
   nameInput.value = data.title;
   autoFilledName = true;
-  updateEditNameVisibility();
+  syncClearNameBtn();
   updateDownloadEnabled();
 }
 
