@@ -77,14 +77,6 @@ input[type=text]:focus{outline:2px solid color-mix(in srgb,var(--button) 40%,tra
 .lockedConfirmBtn{width:100%;margin-top:14px}
 .nameInputWrap{position:relative}
 .nameInputWrap input{width:100%;box-sizing:border-box;padding-right:38px}
-/* Video-to-MP3: "use the video's own name" checkbox above the name field */
-.checkRow{display:flex;align-items:center;gap:10px;margin:0 0 9px}
-.checkRow input{width:20px;height:20px;margin:0;flex:none;accent-color:var(--button);cursor:pointer}
-.checkRow label{display:block;margin:0;font-size:13.5px;font-weight:750;color:var(--text);cursor:pointer;line-height:1.3}
-/* Locked = greyed out, but the field stays readonly (not disabled) so a long title can still be scrolled/selected */
-.nameInputWrap.locked input{opacity:.7;background:color-mix(in srgb,var(--muted) 10%,var(--bg));padding-right:13px;cursor:default}
-.nameInputWrap.locked .clearFieldBtn{display:none!important}
-.nameInputWrap input{text-overflow:clip;white-space:nowrap}
 .clearableInputWrap{position:relative}
 .clearableInputWrap input{width:100%;box-sizing:border-box;padding-right:38px}
 .clearFieldBtn{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:26px;height:26px;min-height:0;margin:0;padding:0;border:none;border-radius:50%;background:color-mix(in srgb,var(--muted) 16%,transparent);color:var(--text);font-size:13px;font-weight:900;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer}
@@ -489,10 +481,6 @@ button.folderPickBtn:active{transform:scale(.98)}
       </div>
 
       <label for="name-input">Save as</label>
-      <div id="videoNameRow" class="checkRow hidden">
-        <input type="checkbox" id="useVideoNameChk" checked>
-        <label for="useVideoNameChk">Use the video's own name</label>
-      </div>
       <div class="nameInputWrap">
         <input type="text" id="name-input" placeholder="Video name" dir="auto" autocomplete="off" autocapitalize="off" spellcheck="false">
         <button type="button" id="clearNameBtn" class="clearFieldBtn hidden" aria-label="Clear name">✕</button>
@@ -732,9 +720,6 @@ const chatId = tgUser ? tgUser.id : null;
 let selectedFolder = null; // { label, driveFolderId, path, idPath } — committed, shown on the main form
 let pendingFolder = null; // { label, driveFolderId, path, idPath } — highlighted inside the overlay, not yet confirmed
 let autoFilledName = false; // true only while name-input's value is one WE set — cleared the instant the user types
-let capturedTitle = '';     // the title we captured from the pasted link (YouTube only, for now)
-let manualName = '';        // what the user had typed before ticking "Use the video's own name" — restored on untick
-let nameLocked = false;     // true while the name field is showing the captured name (readonly)
 let selectedRowEl = null; // the currently highlighted row element inside the folder-picker tree
 let deepLinkMode = 'gdrive'; // which job type the shared link/name/folder form is for when deepLinkScreen is 'screen-app'
 let deepLinkScreen = null; // set from the ?screen= param when opened via one of the bot's two buttons — consumed once, right after auth, to skip Home and land straight on that screen
@@ -1616,10 +1601,6 @@ function setJobMode(mode) {
   delete btn.dataset.originalHtml; // setButtonLoading would otherwise restore the old label
   document.getElementById('folderPickerConfirmBtn').textContent = m.confirm;
   document.getElementById('queuedIcon').textContent = m.icon;
-  // The "use the video's own name" checkbox only exists for Video to MP3
-  document.getElementById('videoNameRow').classList.toggle('hidden', jobMode !== 'mp3');
-  applyNameMode();
-  updateDownloadEnabled();
 }
 function openJobScreen(mode) {
   setJobMode(mode);
@@ -1972,54 +1953,8 @@ document.getElementById('usageRefreshBtn').onclick = (e) => {
 function updateDownloadEnabled() {
   const url = document.getElementById('url-input').value.trim();
   const name = document.getElementById('name-input').value.trim();
-  // When the video's own name is used, the name may legitimately be empty here —
-  // the title is resolved on the server side if we couldn't capture it in the browser.
-  setSoftBlocked(document.getElementById('download-btn'), !(url && (name || nameModeActive()) && selectedFolder));
+  setSoftBlocked(document.getElementById('download-btn'), !(url && name && selectedFolder));
 }
-
-// ---- "Use the video's own name" (Video to MP3 only) ----
-function nameModeActive() {
-  return jobMode === 'mp3' && document.getElementById('useVideoNameChk').checked;
-}
-// Syncs the name field with the checkbox: locked (readonly, shows the captured title,
-// scrollable if long) when ticked, editable again when not.
-function applyNameMode() {
-  const nameInput = document.getElementById('name-input');
-  const wrap = nameInput.parentElement;
-  const locked = nameModeActive();
-
-  if (locked && !nameLocked) {
-    manualName = nameInput.value;            // remember what they typed so unticking gives it back
-  } else if (!locked && nameLocked) {
-    if (manualName.trim()) {
-      nameInput.value = manualName;
-      autoFilledName = false;
-    } else if (capturedTitle) {
-      nameInput.value = capturedTitle;       // nothing typed — start from the captured title, editable
-      autoFilledName = true;
-    } else {
-      nameInput.value = '';
-      autoFilledName = false;
-    }
-    manualName = '';
-  }
-  nameLocked = locked;
-
-  wrap.classList.toggle('locked', locked);
-  nameInput.readOnly = locked;               // readonly (not disabled) so long names can still be scrolled
-  nameInput.placeholder = locked ? (capturedTitle ? '' : "Name will be taken from the video") : 'Video name';
-  if (locked) {
-    nameInput.value = capturedTitle;
-    nameInput.scrollLeft = 0;
-    autoFilledName = false;
-  }
-  syncClearNameBtn();
-}
-document.getElementById('useVideoNameChk').addEventListener('change', () => {
-  applyNameMode();
-  updateDownloadEnabled();
-  if (nameModeActive() && !capturedTitle) scheduleTitleFetch();
-});
 
 // Keep names tidy for every job type: Arabic (and any other script) passes through untouched;
 // only control characters and invisible bidi marks are dropped, and whitespace is collapsed.
@@ -2032,8 +1967,6 @@ function cleanName(str) {
 }
 
 document.getElementById('url-input').addEventListener('input', () => {
-  capturedTitle = ''; // a new link means the old captured title no longer applies
-  if (nameModeActive()) applyNameMode();
   updateDownloadEnabled();
   scheduleTitleFetch();
 });
@@ -2044,10 +1977,10 @@ document.getElementById('name-input').addEventListener('input', () => {
 });
 
 // The ✕ shows whenever the name field has text (including a name we filled in from the
-// video title) and hides while the field is locked to the video's own name.
+// video title).
 function syncClearNameBtn() {
   const nameInput = document.getElementById('name-input');
-  document.getElementById('clearNameBtn').classList.toggle('hidden', !nameInput.value || nameLocked);
+  document.getElementById('clearNameBtn').classList.toggle('hidden', !nameInput.value);
 }
 
 // ---- Auto-fill the "Save as" name from the pasted link ----
@@ -2060,7 +1993,7 @@ let titleFetchDebounce = null;
 let titleFetchSeq = 0;
 
 function scheduleTitleFetch() {
-  if (!userSettings.autoFillName && !nameModeActive()) return;
+  if (!userSettings.autoFillName) return;
   clearTimeout(titleFetchDebounce);
   const url = document.getElementById('url-input').value.trim();
   if (!/(?:youtube\.com|youtu\.be)/i.test(url)) return;
@@ -2070,7 +2003,7 @@ function scheduleTitleFetch() {
 
 async function fetchYouTubeTitle(url, seq) {
   const nameInput = document.getElementById('name-input');
-  if (!nameModeActive() && nameInput.value.trim() && !autoFilledName) return; // user already has their own name typed — don't touch it
+  if (nameInput.value.trim() && !autoFilledName) return; // user already has their own name typed — don't touch it
 
   let data;
   try {
@@ -2085,13 +2018,6 @@ async function fetchYouTubeTitle(url, seq) {
   if (!data || !data.title) return;
   if (document.getElementById('url-input').value.trim() !== url) return;
 
-  capturedTitle = data.title;
-  if (nameModeActive()) {            // locked field just shows the captured title
-    applyNameMode();
-    updateDownloadEnabled();
-    return;
-  }
-  if (!userSettings.autoFillName) return;
   if (nameInput.value.trim() && !autoFilledName) return;
 
   nameInput.value = data.title;
@@ -2967,14 +2893,13 @@ document.getElementById('add-folder-btn').onclick = async () => {
 document.getElementById('download-btn').onclick = async () => {
   clearError('main-error');
   const url = document.getElementById('url-input').value.trim();
-  const useVideoName = nameModeActive();
   const name = cleanName(document.getElementById('name-input').value);
-  if (!url || (!name && !useVideoName) || !selectedFolder) {
+  if (!url || !name || !selectedFolder) {
     const urlEl = document.getElementById('url-input');
     const nameEl = document.getElementById('name-input');
     const missing = [];
     if (!url) missing.push(urlEl);
-    if (!name && !useVideoName) missing.push(nameEl);
+    if (!name) missing.push(nameEl);
     if (!selectedFolder) missing.push(document.getElementById('folder-select-btn'));
     missing.forEach(flashInvalid);
     if (missing.length === 1 && missing[0].tagName === 'INPUT') missing[0].focus();
@@ -2986,9 +2911,9 @@ document.getElementById('download-btn').onclick = async () => {
 
   let result;
   try {
-    const params = { chatId, url, customName: name, destFolderId: selectedFolder.driveFolderId };
-    if (useVideoName) params.useVideoTitle = '1'; // server falls back to the video's own title when customName is empty
-    result = await callApi(JOB_MODES[jobMode].api, params);
+    result = await callApi(JOB_MODES[jobMode].api, {
+      chatId, url, customName: name, destFolderId: selectedFolder.driveFolderId
+    });
   } catch (e) {
     setButtonLoading(btn, false);
     showError('main-error', 'No connection.');
@@ -3005,9 +2930,8 @@ document.getElementById('download-btn').onclick = async () => {
 
   setButtonLoading(btn, false);
   // U+2068/U+2069 isolate the name so Arabic (RTL) text doesn't scramble the surrounding English sentence
-  const queuedLabel = name ? `"\u2068${name}\u2069"` : 'Your video';
   document.getElementById('queuedMsg').textContent =
-    `${queuedLabel} has been added to your queue — we'll send you a message on Telegram as soon as it's ready.`;
+    `"\u2068${name}\u2069" has been added to your queue — we'll send you a message on Telegram as soon as it's ready.`;
   openOverlay('queuedOverlay');
 };
 
@@ -3025,9 +2949,7 @@ function clearAllFields() {
   document.getElementById('clearUrlBtn').classList.add('hidden');
   document.getElementById('clearNameBtn').classList.add('hidden');
   autoFilledName = false;
-  capturedTitle = '';
-  manualName = '';
-  applyNameMode();
+  syncClearNameBtn();
   selectedFolder = null;
   updateMainPathPreview(null);
   updateDownloadEnabled();
@@ -3040,7 +2962,6 @@ const HELP_CONTENT = [
   { q: 'Why is the Download button greyed out?', a: 'All three fields — the link, the name, and the destination folder — need to be filled in before the button unlocks.' },
   { q: 'How do I add a Drive folder?', a: 'Tap the ⚙️ gear at the top right to open Settings, paste a Google Drive folder share link, then tap Add folder. Its name is pulled straight from Drive, and it will then show up when choosing a destination.' },
   { q: 'How do I remove a folder?', a: 'Open Settings (the ⚙️ gear at the top right) and tap Remove next to any folder in your list. This only removes it from this app — it does not delete the folder from Drive.' },
-  { q: 'What does \"Use the video\'s own name\" do?', a: 'On Video to MP3, tick it to save the MP3 under the video\'s own title (the name field locks, and you can scroll it if the title is long). Untick it to type your own name — Arabic and other languages are supported.' },
   { q: 'What happens if I hit my quota?', a: 'Each account has a download quota that resets on a regular period. If you go over it, new downloads are blocked until the next period starts.' }
 ];
 function renderHelpList() {
