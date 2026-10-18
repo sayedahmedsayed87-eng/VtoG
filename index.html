@@ -253,8 +253,11 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .uqPanel{background:none;border:0;border-radius:0;padding:0;box-shadow:none}
 .uqDatesRow{display:flex;align-items:center;gap:12px;padding:0 2px}
 .uqDate{flex:none;min-width:0}
-.uqDateEnd{text-align:right}
-.uqDatesRow .uqValue{font-size:13px;white-space:nowrap}
+.uqDate{text-align:center}
+.uqDateEnd{text-align:center}
+.uqDatesRow .uqValue{display:flex;flex-direction:column;align-items:center;font-size:14px;line-height:1.1;white-space:nowrap}
+.uqDM{font-weight:850;letter-spacing:.2px}
+.uqYr{margin-top:1px;font-size:10px;font-weight:700;color:var(--muted)}
 .uqMid{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center}
 .uqDaysNum{font-size:20px;font-weight:900;line-height:1;font-variant-numeric:tabular-nums;color:var(--glow)}
 .uqDaysLbl{margin:1px 0 4px;font-size:9px;font-weight:700;line-height:1;color:var(--muted)}
@@ -473,10 +476,10 @@ button.folderPickBtn:active{transform:scale(.98)}
               </div>
               <div class="sat" style="--x:71.53;--y:35.12">
                 <button type="button" id="homeIdentifyBtn" class="satBtn" aria-label="Movie/Series Identifier"><span class="satEmoji">🎬</span><span class="satName">Movie/Series<br>Identifier</span></button>
-                <div class="satInfo up">In queue <b id="uqQ_VID">0</b><br>Uploaded <b id="uqU_VID">0</b></div>
+                <div class="satInfo up">In queue <b id="uqQ_VID">0</b><br>Identified <b id="uqU_VID">0</b></div>
               </div>
               <div class="sat" style="--x:17.01;--y:61.57">
-                <button type="button" id="homeImageSeqBtn" class="satBtn" aria-label="Video to Image Sequence"><span class="satEmoji">🖼️</span><span class="satName">Video to<br>Image<br>Sequence</span></button>
+                <button type="button" id="homeImageSeqBtn" class="satBtn" aria-label="Videos To Image Seq."><span class="satEmoji">🖼️</span><span class="satName">Videos To<br>Image Seq.</span></button>
                 <div class="satInfo">In queue <b id="uqQ_SEQ">0</b><br>Uploaded <b id="uqU_SEQ">0</b></div>
               </div>
               <div class="sat" style="--x:82.99;--y:61.57">
@@ -515,7 +518,7 @@ button.folderPickBtn:active{transform:scale(.98)}
 
 <div id="appLock" class="appLock hidden" aria-hidden="true"></div>
 
-<!-- Job popup: Video to Gdrive / MP3 / Image Sequence / Caption share this form (title changes per job) -->
+<!-- Job popup: Video to Gdrive / MP3 / Image Seq. / Caption share this form (title changes per job) -->
 <div id="jobOverlay" class="help-overlay maxOverlay hidden">
   <div class="help-inner">
     <div class="help-header">
@@ -1642,7 +1645,7 @@ document.getElementById('retryUsernameBtn').onclick = () => {
 const JOB_MODES = {
   gdrive:  { title: 'Video To G-Drive',    api: 'submitDownload',  btn: 'Download',        confirm: 'Download here',     icon: '📥' },
   mp3:     { title: 'Video To MP3',        api: 'submitMp3',       btn: 'Convert to MP3',  confirm: 'Save MP3 here',     icon: '🎵' },
-  imgseq:  { title: 'Video To Image Seq.', api: 'submitImageSeq',  btn: 'Extract Images',  confirm: 'Save images here',  icon: '🖼️' },
+  imgseq:  { title: 'Videos To Image Seq.', api: 'submitImageSeq',  btn: 'Extract Images',  confirm: 'Save images here',  icon: '🖼️' },
   caption: { title: "Video's Caption",     api: 'submitCaption',   btn: 'Get Caption',     confirm: 'Save caption here', icon: '💬' }
 };
 let jobMode = 'gdrive';
@@ -1867,6 +1870,13 @@ const USAGE_VIDEO_TYPES = [
 // Saved numbers older than this are refreshed quietly in the background when Home opens.
 const USAGE_STALE_MS = 10 * 60 * 1000;
 
+// "5 OCT" with the year smaller and centred underneath
+function fmtUsageDateHtml(v) {
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return '—';
+  const dm = d.getDate() + ' ' + d.toLocaleDateString(undefined, { month: 'short' }).replace(/\.$/, '').toUpperCase();
+  return `<span class="uqDM">${dm}</span><span class="uqYr">${d.getFullYear()}</span>`;
+}
 function fmtUsageDate(v) {
   const d = new Date(v);
   return isNaN(d.getTime()) ? '—' : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
@@ -1948,8 +1958,8 @@ function renderUsage(result) {
   const n = (obj, key) => Number(obj && obj[key]) || 0;
 
   // Row 1
-  document.getElementById('uqStart').textContent = fmtUsageDate(r.periodStart);
-  document.getElementById('uqEnd').textContent = fmtUsageDate(r.periodEnd);
+  document.getElementById('uqStart').innerHTML = fmtUsageDateHtml(r.periodStart);
+  document.getElementById('uqEnd').innerHTML = fmtUsageDateHtml(r.periodEnd);
   // 30 dots = the quota period: filled = days already past, empty = days left
   {
     const DAY = 86400000, DOTS = 30;
