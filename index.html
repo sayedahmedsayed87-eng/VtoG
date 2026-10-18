@@ -38,9 +38,6 @@ body{height:100vh;height:100dvh;font-family:-apple-system,BlinkMacSystemFont,"Se
 
 .header{padding:8px 2px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;position:sticky;top:0;background:var(--bg);z-index:10}
 .headerLeft{display:flex;align-items:flex-start;gap:6px;min-width:0}
-.back-fab{flex:none;width:40px;height:40px;min-height:0;margin:2px 0 0;padding:0;border-radius:50%;display:grid;place-items:center;background:var(--surface);color:var(--text);border:1px solid var(--border);box-shadow:0 6px 18px rgba(0,0,0,.10)}
-.back-fab svg{width:20px;height:20px}
-.back-fab:active{transform:scale(.9)}
 .headerText{min-width:0}
 .business-name{font-size:clamp(19px,5vw,23px);font-weight:850;line-height:1.25;letter-spacing:-.3px}
 .user-name{margin-top:4px;color:var(--muted);font-size:13px;font-weight:600;line-height:1.4;overflow-wrap:anywhere}
@@ -55,12 +52,6 @@ body{height:100vh;height:100dvh;font-family:-apple-system,BlinkMacSystemFont,"Se
 
 .centerScreen{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:clamp(22px,6.5vw,32px);text-align:center;box-shadow:0 10px 32px rgba(0,0,0,.06)}
 
-.homeGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,auto);gap:12px;margin-top:6px}
-.homeCell{min-height:clamp(120px,34vw,150px)}
-.homeBtn{width:100%;min-height:clamp(120px,34vw,150px);margin:0;padding:12px 10px;border-radius:20px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:var(--surface);color:var(--text);border:1px solid var(--border);box-shadow:0 10px 32px rgba(0,0,0,.06)}
-.homeBtn:active{transform:scale(.97)}
-.homeEmoji{font-size:clamp(34px,10vw,44px);line-height:1}
-.homeLabel{font-size:clamp(13px,3.7vw,15px);font-weight:850;line-height:1.25}
 
 .formCard{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 16px 18px}
 .icon{width:clamp(64px,18vw,76px);height:clamp(64px,18vw,76px);margin:0 auto 16px;border-radius:50%;display:grid;place-items:center;font-size:clamp(28px,8vw,34px);background:color-mix(in srgb,var(--button) 11%,transparent)}
@@ -254,12 +245,33 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 
 /* Usage quota: dates on the left, glowing ring on the right, then the per-type video table */
 .uqHead{margin:0 0 12px;font-size:15px;font-weight:850}
-.uqGrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.7fr);gap:12px;align-items:center}
-.uqDates{display:flex;flex-direction:column;gap:16px}
 .uqLabel{font-size:12px;font-weight:700;color:var(--muted)}
 .uqValue{margin-top:2px;font-size:14px;font-weight:800;line-height:1.3}
-.uqRingWrap{position:relative;width:min(100%,170px);aspect-ratio:1;margin:0 auto}
+/* ---- Home: usage dashboard (3 rows) ---- */
+.homeRows{display:flex;flex-direction:column;gap:12px;margin-top:2px}
+.uqPanel{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:14px 16px;box-shadow:0 10px 32px rgba(0,0,0,.06)}
+.uqDatesRow{display:flex;align-items:center;gap:12px;padding:12px 14px}
+.uqDate{flex:1;min-width:0}
+.uqStagePanel{padding:12px 8px 8px}
+/* Row 2: a 100 x 131 box. Every position below is a percentage of it, so the whole layout scales with the screen width.
+   The 7 buttons sit on a heptagon around the ring (slightly taller than wide so the labels under the upper buttons clear the ring). */
+.uqStage{position:relative;width:100%;aspect-ratio:100/131}
+.uqRingWrap{position:absolute;left:50%;top:51.91%;width:47%;aspect-ratio:1;transform:translate(-50%,-50%)}
 .uqRingWrap svg{display:block;width:100%;height:100%;overflow:visible}
+.uqRingWrap .uqNum{font-size:clamp(26px,9.4vw,44px)}
+.uqRingWrap .uqSub{font-size:clamp(10px,2.9vw,12px)}
+.sat{position:absolute;left:calc(var(--x) * 1%);top:calc(var(--y) * 1%);width:23%;aspect-ratio:1;transform:translate(-50%,-50%)}
+.satBtn{position:absolute;inset:0;width:100%;height:100%;min-height:0;margin:0;padding:0;border-radius:50%;flex-direction:column;gap:1px;color:var(--buttonText);
+  border:1px solid color-mix(in srgb,var(--button) 65%,#000);
+  background:radial-gradient(circle at 32% 24%,color-mix(in srgb,var(--button) 52%,#fff) 0%,var(--button) 48%,color-mix(in srgb,var(--button) 60%,#000) 100%);
+  box-shadow:0 10px 20px color-mix(in srgb,var(--button) 38%,transparent),inset 0 -5px 10px rgba(0,0,0,.22),inset 0 4px 8px rgba(255,255,255,.35)}
+.satBtn:active{transform:scale(.93)}
+.satEmoji{font-size:clamp(16px,5.4vw,25px);line-height:1}
+.satCode{font-size:clamp(9px,2.9vw,12.5px);font-weight:900;letter-spacing:.2px;line-height:1.1}
+.satCode.long{font-size:clamp(8px,2.5vw,11px);letter-spacing:0}
+.satInfo{position:absolute;top:calc(100% + 4px);left:50%;transform:translateX(-50%);width:max-content;text-align:center;font-size:clamp(9px,2.7vw,11px);line-height:1.3;font-weight:650;color:var(--muted);white-space:nowrap}
+.satInfo b{color:var(--text);font-weight:850;font-variant-numeric:tabular-nums}
+.satEmpty{position:absolute;inset:0;border-radius:50%;background:color-mix(in srgb,var(--muted) 9%,transparent);border:1px solid var(--border);box-shadow:inset 0 3px 8px rgba(0,0,0,.08),inset 0 -2px 5px rgba(255,255,255,.18)}
 .uqCenter{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none}
 .uqNum{font-size:clamp(26px,8vw,34px);font-weight:900;line-height:1;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
 .uqNum small{margin-left:3px;font-size:12px;font-weight:800;letter-spacing:0;color:var(--muted)}
@@ -271,13 +283,6 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .uqTable tr.off{opacity:.5;filter:grayscale(1)}
 .uqHeadLife{margin-top:24px}
 .uqTable tr.uqTotal td{padding-top:12px;border-top:3px solid color-mix(in srgb,var(--muted) 35%,transparent);font-weight:850}
-.uqPeriod{width:100%;margin-top:18px;border-collapse:collapse}
-.uqPeriod th{padding:0 0 6px;font-size:11px;font-weight:700;text-align:right;white-space:nowrap;color:var(--muted)}
-.uqPeriod td{padding:5px 0;font-size:12.5px;font-weight:700;vertical-align:middle}
-.uqPeriod td:first-child{width:24px;font-size:14px;line-height:1}
-.uqPeriod th:nth-child(n+2),.uqPeriod td:nth-child(n+3){width:24%}
-.uqPeriod td:nth-child(n+3){text-align:right;font-weight:850;font-variant-numeric:tabular-nums}
-.uqPeriod tr.off{opacity:.5;filter:grayscale(1)}
 .uqLifeGb{margin:0 0 14px}
 .uqBig{margin-top:4px;font-size:26px;font-weight:900;line-height:1.1;letter-spacing:-.4px;font-variant-numeric:tabular-nums}
 .uqBig small{margin-left:3px;font-size:12px;font-weight:800;letter-spacing:0;color:var(--muted)}
@@ -293,9 +298,9 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 }
 @media (prefers-reduced-motion:reduce){.uqStar{animation:none}}
 
-.usageRefreshBtn{margin-left:auto;padding:6px 12px 6px 10px;font-size:12.5px}
+.usageRefreshBtn{flex:none;margin-left:auto;padding:8px 11px;font-size:14px}
 .usageRefreshBtn:disabled{opacity:.45}
-.uqWrap{position:relative;min-height:300px}
+.uqWrap{position:relative}
 .uqContent{transition:opacity .2s,filter .2s}
 .uqWrap.busy .uqContent{opacity:.3;filter:grayscale(1);pointer-events:none}
 .uqOverlay{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:0 12px}
@@ -333,9 +338,12 @@ button.folderPickBtn:active{transform:scale(.98)}
 .folderFieldBtn{width:auto;flex:none;margin:0;padding:11px 16px;white-space:nowrap}
 
 /* Locked "coming soon" home buttons */
-.homeBtn.locked{opacity:.55;filter:grayscale(.5);cursor:default}
-.homeBtn.locked:active{transform:none}
 .comingSoonBadge{font-size:11px;font-weight:800;color:var(--muted);background:color-mix(in srgb,var(--muted) 16%,transparent);padding:4px 11px;border-radius:99px;margin-top:0}
+
+/* Job popups: the same overlay box as Settings, stretched to fill the screen */
+.help-overlay.maxOverlay{padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom))}
+.maxOverlay .help-inner{width:100%;max-width:none;height:100%;max-height:none;border-radius:20px}
+.maxOverlay .help-body{padding-bottom:4px}
 
 /* Success / warning-error glow — submission feedback overlays and warning boxes */
 .help-inner.glow-success{border:1px solid var(--success);box-shadow:0 0 0 1px var(--success),0 0 30px 2px color-mix(in srgb,var(--success) 35%,transparent),0 20px 60px rgba(0,0,0,.35)}
@@ -357,9 +365,6 @@ button.folderPickBtn:active{transform:scale(.98)}
 <main class="app">
   <header class="header">
     <div class="headerLeft">
-      <button type="button" id="backBtn" class="back-fab hidden" aria-label="Back to home">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-      </button>
       <div class="headerText">
         <div id="pageTitle" class="business-name">Clip Sense</div>
         <div id="welcome" class="user-name">Checking your account…</div>
@@ -426,50 +431,83 @@ button.folderPickBtn:active{transform:scale(.98)}
       </div>
     </section>
 
-    <!-- Home screen -->
+    <!-- Home screen: usage dashboard. Row 1 = quota dates, row 2 = ring + job buttons, row 3 = lifetime usage -->
     <section id="screen-home" class="screen">
-      <div class="homeGrid">
-        <button type="button" id="homeIdentifyBtn" class="homeBtn">
-          <span class="homeEmoji">🎬</span>
-          <span class="homeLabel">Movie/Series Identifier</span>
-        </button>
-        <button type="button" id="homeGdriveBtn" class="homeBtn">
-          <span class="homeEmoji">📥</span>
-          <span class="homeLabel">Video to Gdrive</span>
-        </button>
-        <button type="button" id="homeMp3Btn" class="homeBtn">
-          <span class="homeEmoji">🎵</span>
-          <span class="homeLabel">Video to MP3</span>
-        </button>
-        <button type="button" id="homeImageSeqBtn" class="homeBtn">
-          <span class="homeEmoji">🖼️</span>
-          <span class="homeLabel">Video to Image Sequence</span>
-        </button>
-        <button type="button" id="homeCaptionBtn" class="homeBtn">
-          <span class="homeEmoji">💬</span>
-          <span class="homeLabel">Video's Caption</span>
-        </button>
-        <div class="homeCell" aria-hidden="true"></div>
-      </div>
-    </section>
+      <div class="uqWrap" id="uqWrap">
+        <div class="uqContent homeRows" id="uqContent">
 
-    <!-- Movie/Series Identifier -->
-    <section id="screen-identify" class="screen">
-      <div class="formCard">
-        <label for="identify-url-input">Video link</label>
-        <div class="clearableInputWrap">
-          <input type="text" id="identify-url-input" placeholder="Paste a Facebook, Instagram, YouTube or X link">
-          <button type="button" id="clearIdentifyUrlBtn" class="clearFieldBtn hidden" aria-label="Clear video link">✕</button>
+          <!-- Row 1 -->
+          <div class="uqPanel uqDatesRow">
+            <div class="uqDate"><div class="uqLabel">📅 Start</div><div class="uqValue" id="uqStart">—</div></div>
+            <div class="uqDate"><div class="uqLabel">🏁 End</div><div class="uqValue" id="uqEnd">—</div></div>
+            <button type="button" id="usageRefreshBtn" class="addFolderFab usageRefreshBtn" aria-label="Refresh usage report"><span>🔄</span></button>
+          </div>
+
+          <!-- Row 2 -->
+          <div class="uqPanel uqStagePanel">
+            <div class="uqStage">
+              <div class="uqRingWrap" id="uqRingWrap"></div>
+
+              <div class="sat" style="--x:50;--y:9.16">
+                <button type="button" id="homeGdriveBtn" class="satBtn" aria-label="Video to Gdrive"><span class="satEmoji">📥</span><span class="satCode">VGD</span></button>
+                <div class="satInfo">In queue <b id="uqQ_VGD">0</b><br>Uploaded <b id="uqU_VGD">0</b></div>
+              </div>
+              <div class="sat" style="--x:20.29;--y:25.25">
+                <button type="button" id="homeMp3Btn" class="satBtn" aria-label="Video to MP3"><span class="satEmoji">🎵</span><span class="satCode">VMP3</span></button>
+                <div class="satInfo">In queue <b id="uqQ_MP3">0</b><br>Uploaded <b id="uqU_MP3">0</b></div>
+              </div>
+              <div class="sat" style="--x:79.71;--y:25.25">
+                <button type="button" id="homeIdentifyBtn" class="satBtn" aria-label="Movie/Series Identifier"><span class="satEmoji">🎬</span><span class="satCode">VID</span></button>
+                <div class="satInfo">In queue <b id="uqQ_VID">0</b><br>Uploaded <b id="uqU_VID">0</b></div>
+              </div>
+              <div class="sat" style="--x:12.95;--y:61.42">
+                <button type="button" id="homeImageSeqBtn" class="satBtn" aria-label="Video to Image Sequence"><span class="satEmoji">🖼️</span><span class="satCode long">VIMGSEQ</span></button>
+                <div class="satInfo">In queue <b id="uqQ_SEQ">0</b><br>Uploaded <b id="uqU_SEQ">0</b></div>
+              </div>
+              <div class="sat" style="--x:87.05;--y:61.42">
+                <button type="button" id="homeCaptionBtn" class="satBtn" aria-label="Video's Caption"><span class="satEmoji">💬</span><span class="satCode">VCAP</span></button>
+                <div class="satInfo">In queue <b id="uqQ_CAP">0</b><br>Uploaded <b id="uqU_CAP">0</b></div>
+              </div>
+              <!-- two empty placeholders, reserved for future job types -->
+              <div class="sat" style="--x:33.51;--y:90.43" aria-hidden="true"><div class="satEmpty"></div></div>
+              <div class="sat" style="--x:66.49;--y:90.43" aria-hidden="true"><div class="satEmpty"></div></div>
+            </div>
+          </div>
+
+          <!-- Row 3 -->
+          <div class="uqPanel">
+            <h3 class="uqHead">Usage Lifetime</h3>
+            <div class="uqLifeGb">
+              <div class="uqLabel">Lifetime GBs usage · download &amp; upload</div>
+              <div class="uqBig" id="uqLifeGb">0<small>GB</small></div>
+            </div>
+            <table class="uqTable"><tbody id="uqLifeRows"></tbody></table>
+          </div>
+
         </div>
-
-        <div id="identify-error" class="error-text hidden"></div>
-
-        <button id="identify-btn" class="blocked" aria-disabled="true">Identify Video</button>
+        <div class="uqOverlay" role="status" aria-live="polite">
+          <span class="spinner dark uqSpinner"></span>
+          <div class="uqOverlayText">Please wait until the data syncs…</div>
+        </div>
       </div>
+      <div class="error-text" id="uqMsg"></div>
     </section>
 
-    <!-- Main tabbed app -->
-    <section id="screen-app" class="screen">
+  </section>
+
+  <footer class="footer"><span id="footerStatus">Ready</span><span id="footerVersion">v1.0.0</span></footer>
+</main>
+
+<div id="appLock" class="appLock hidden" aria-hidden="true"></div>
+
+<!-- Job popup: Video to Gdrive / MP3 / Image Sequence / Caption share this form (title changes per job) -->
+<div id="jobOverlay" class="help-overlay maxOverlay hidden">
+  <div class="help-inner">
+    <div class="help-header">
+      <button type="button" class="help-close" id="jobCloseBtn" aria-label="Close">×</button>
+      <div class="help-title" id="jobOverlayTitle">Video To G-Drive</div>
+    </div>
+    <div class="help-body">
       <div class="downloadHeader">
         <label for="url-input">Video link</label>
         <button type="button" id="clearAllBtn" class="clearAllBtn">Clear all</button>
@@ -491,18 +529,31 @@ button.folderPickBtn:active{transform:scale(.98)}
         <span id="mainPathPreview" class="folderPickText placeholder">📁 Tap to choose a folder</span>
         <span class="folderPickChevron" aria-hidden="true">›</span>
       </button>
+    </div>
+    <!-- Footer: outside the scrollable body so the action button is always in reach -->
+    <div id="main-error" class="error-text hidden"></div>
+    <button id="download-btn" class="blocked lockedConfirmBtn" aria-disabled="true">Download</button>
+  </div>
+</div>
 
-      <div id="main-error" class="error-text hidden"></div>
-
-      <button id="download-btn" class="blocked" aria-disabled="true">Download</button>
-    </section>
-
-  </section>
-
-  <footer class="footer"><span id="footerStatus">Ready</span><span id="footerVersion">v1.0.0</span></footer>
-</main>
-
-<div id="appLock" class="appLock hidden" aria-hidden="true"></div>
+<!-- Movie/Series Identifier popup -->
+<div id="identifyOverlay" class="help-overlay maxOverlay hidden">
+  <div class="help-inner">
+    <div class="help-header">
+      <button type="button" class="help-close" id="identifyCloseBtn" aria-label="Close">×</button>
+      <div class="help-title">Movie Identifier</div>
+    </div>
+    <div class="help-body">
+      <label for="identify-url-input">Video link</label>
+      <div class="clearableInputWrap">
+        <input type="text" id="identify-url-input" placeholder="Paste a Facebook, Instagram, YouTube or X link">
+        <button type="button" id="clearIdentifyUrlBtn" class="clearFieldBtn hidden" aria-label="Clear video link">✕</button>
+      </div>
+    </div>
+    <div id="identify-error" class="error-text hidden"></div>
+    <button id="identify-btn" class="blocked lockedConfirmBtn" aria-disabled="true">Identify Video</button>
+  </div>
+</div>
 
 <!-- Folder picker overlay -->
 <div id="folderPickerOverlay" class="help-overlay hidden">
@@ -558,23 +609,6 @@ button.folderPickBtn:active{transform:scale(.98)}
       <div class="settingsPane active" id="settingsPaneUser">
 
         <details class="settingsCategory" open>
-          <summary>
-            <span>Usage report</span>
-            <button type="button" id="usageRefreshBtn" class="addFolderFab usageRefreshBtn" aria-label="Refresh usage report"><span>🔄</span><span>Refresh</span></button>
-          </summary>
-          <div class="settingsCategoryBody" id="usageReportBody">
-            <div class="uqWrap" id="uqWrap">
-              <div class="uqContent" id="uqContent"></div>
-              <div class="uqOverlay" role="status" aria-live="polite">
-                <span class="spinner dark uqSpinner"></span>
-                <div class="uqOverlayText">Please wait until the data syncs…</div>
-              </div>
-            </div>
-            <div class="error-text" id="uqMsg"></div>
-          </div>
-        </details>
-
-        <details class="settingsCategory">
           <summary>Preferences</summary>
           <div class="settingsCategoryBody">
             <div class="toggleRow">
@@ -798,20 +832,20 @@ function clearRememberedFolder(id) {
 }
 
 // ---- Screen helpers ----
-const SETTINGS_SCREENS = ['screen-home', 'screen-identify', 'screen-app']; // screens that show the ⚙️ gear (everything after sign-in)
-const FEATURE_SCREENS = ['screen-app', 'screen-identify']; // screens reached from Home, get a back button
+const SETTINGS_SCREENS = ['screen-home']; // screens that show the ⚙️ gear (everything after sign-in)
 const SCREEN_TITLES = {
   'screen-loading': 'Clip Sense',
   'screen-no-username': 'Clip Sense',
   'screen-duplicate': 'Clip Sense',
-  'screen-home': 'Clip Sense',
-  'screen-app': 'Video To G-Drive',
-  'screen-identify': 'Movie Identifier'
+  'screen-home': 'Clip Sense'
 };
 function showScreen(id) {
-  document.querySelectorAll('#screen-loading, #screen-no-username, #screen-duplicate, #screen-conflict, #screen-home, #screen-app, #screen-identify').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('#screen-loading, #screen-no-username, #screen-duplicate, #screen-conflict, #screen-home').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  document.getElementById('backBtn').classList.toggle('hidden', !FEATURE_SCREENS.includes(id));
+  // The job popups sit above every screen, so any screen switch tucks them away (their field values are kept).
+  closeOverlay('jobOverlay');
+  closeOverlay('identifyOverlay');
+  if (id === 'screen-home') loadUsageReport(); // shows saved numbers instantly, refreshes quietly if they are old
   document.getElementById('pageTitle').textContent = SCREEN_TITLES[id] || 'Clip Sense';
   const showGear = SETTINGS_SCREENS.includes(id);
   document.getElementById('settingsFab').classList.toggle('hidden', !showGear);
@@ -1067,7 +1101,7 @@ const FolderCache = (() => {
 //  - Telegram DeviceStorage (9.0+) or CloudStorage (6.9+)  (polled; works even
 //    if the WebViews don't share browser storage)
 // Tap the version label in the footer 5 times to see a live diagnostics panel.
-const GUARD_BUILD = 'guard-r5';
+const GUARD_BUILD = 'guard-r5-home';
 const APP_INSTANCE_ID = Math.random().toString(36).slice(2) + '-' + Date.now();
 const ME = APP_INSTANCE_ID.split('-')[0].slice(0, 4);
 const INSTANCE_LOCK_KEY = 'cs_active_instance';
@@ -1147,15 +1181,18 @@ function handleLock(lock, source) {
 // (don't silently drop it).
 function normalizeLink(s) { return String(s || '').trim().replace(/\/+$/, ''); }
 function currentTaskLink() {
-  const activeScreen = document.querySelector('.screen.active');
-  const screenId = activeScreen ? activeScreen.id : null;
+  const isOpen = id => { const o = document.getElementById(id); return !!o && !o.classList.contains('hidden'); };
+  let screenId = null;
   let val = '';
-  if (screenId === 'screen-identify') {
-    const el = document.getElementById('identify-url-input');
-    val = el ? el.value : '';
-  } else if (screenId === 'screen-app') {
-    const el = document.getElementById('url-input');
-    val = el ? el.value : '';
+  if (isOpen('identifyOverlay')) {
+    screenId = 'screen-identify';
+    val = document.getElementById('identify-url-input').value;
+  } else if (isOpen('jobOverlay')) {
+    screenId = 'screen-app';
+    val = document.getElementById('url-input').value;
+  } else {
+    const activeScreen = document.querySelector('.screen.active');
+    screenId = activeScreen ? activeScreen.id : null;
   }
   return { screen: screenId, link: normalizeLink(val) };
 }
@@ -1414,7 +1451,7 @@ document.getElementById('conflictKeepBtn').onclick = () => {
   instanceStartedAt = Date.now();
   claimInstanceLock();
   startInstanceWatch();
-  if (conflictScreenId) showScreen(conflictScreenId);
+  if (conflictScreenId) restoreScreen(conflictScreenId);
 };
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -1596,26 +1633,45 @@ let jobMode = 'gdrive';
 function setJobMode(mode) {
   jobMode = JOB_MODES[mode] ? mode : 'gdrive';
   const m = JOB_MODES[jobMode];
-  SCREEN_TITLES['screen-app'] = m.title;
+  document.getElementById('jobOverlayTitle').textContent = m.title;
   const btn = document.getElementById('download-btn');
   btn.innerHTML = m.btn;
   delete btn.dataset.originalHtml; // setButtonLoading would otherwise restore the old label
   document.getElementById('folderPickerConfirmBtn').textContent = m.confirm;
   document.getElementById('queuedIcon').textContent = m.icon;
 }
+// Job + identify pages are popups over Home now (no separate screens).
 function openJobScreen(mode) {
   setJobMode(mode);
-  showScreen('screen-app');
+  openOverlay('jobOverlay');
   loadFolderTree();
+  publishCurrentTaskIfActive();
+}
+function closeJobPopup() {
+  closeOverlay('jobOverlay');
+  publishCurrentTaskIfActive();
+}
+function openIdentifyPopup() {
+  openOverlay('identifyOverlay');
+  publishCurrentTaskIfActive();
+}
+function closeIdentifyPopup() {
+  closeOverlay('identifyOverlay');
+  publishCurrentTaskIfActive();
+}
+// Used by the duplicate-tab guard to put this tab back exactly where it was.
+function restoreScreen(id) {
+  if (id === 'screen-app') { showScreen('screen-home'); openOverlay('jobOverlay'); publishCurrentTaskIfActive(); }
+  else if (id === 'screen-identify') { showScreen('screen-home'); openOverlay('identifyOverlay'); publishCurrentTaskIfActive(); }
+  else showScreen(id);
 }
 
 function enterHomeOrDeepLink() {
+  showScreen('screen-home');
   if (deepLinkScreen === 'screen-app') {
     openJobScreen(deepLinkMode);
   } else if (deepLinkScreen === 'screen-identify') {
-    showScreen('screen-identify');
-  } else {
-    showScreen('screen-home');
+    openIdentifyPopup();
   }
   deepLinkScreen = null;
 }
@@ -1623,12 +1679,11 @@ document.getElementById('homeGdriveBtn').onclick = () => openJobScreen('gdrive')
 document.getElementById('homeMp3Btn').onclick = () => openJobScreen('mp3');
 document.getElementById('homeImageSeqBtn').onclick = () => openJobScreen('imgseq');
 document.getElementById('homeCaptionBtn').onclick = () => openJobScreen('caption');
-document.getElementById('homeIdentifyBtn').onclick = () => {
-  showScreen('screen-identify');
-};
-document.getElementById('backBtn').onclick = () => {
-  showScreen('screen-home');
-};
+document.getElementById('homeIdentifyBtn').onclick = openIdentifyPopup;
+document.getElementById('jobCloseBtn').onclick = closeJobPopup;
+document.getElementById('identifyCloseBtn').onclick = closeIdentifyPopup;
+document.getElementById('jobOverlay').addEventListener('click', function (e) { if (e.target === this) closeJobPopup(); });
+document.getElementById('identifyOverlay').addEventListener('click', function (e) { if (e.target === this) closeIdentifyPopup(); });
 
 // ---- Movie/Series Identifier ----
 wireClearButton('identify-url-input', 'clearIdentifyUrlBtn');
@@ -1681,12 +1736,14 @@ document.getElementById('identify-btn').onclick = async () => {
     return;
   }
 
+  refreshUsageAfterSubmit();
   showIdentifyResult(true, 'Video link received', "You'll be notified with the result as soon as the video is identified.");
 };
 document.getElementById('identifyResultCloseBtn').onclick = () => {
   closeOverlay('identifyResultOverlay');
   if (identifySucceeded) {
     clearIdentifyField();
+    closeIdentifyPopup(); // in case close() doesn't fire, land back on Home
     closeAppAfterSuccess();
   }
 };
@@ -1720,7 +1777,6 @@ function openSettings() {
   loadManageFolders();
   startManageFoldersRefresh();
   renderUserSettingsPane();
-  loadUsageReport();
 }
 function closeSettings() {
   closeOverlay('settingsOverlay');
@@ -1770,7 +1826,8 @@ document.getElementById('clearCacheConfirmBtn').onclick = () => {
   clearCachedProfile(chatId);
   clearRememberedFolder(chatId);
   clearCachedUsage(chatId);
-  usageReportLoaded = false; // next Settings open fetches fresh data
+  usageReportLoaded = false;
+  loadUsageReport(true); // Home shows the numbers now, so fetch them again right away
   const msg = document.getElementById('clearCacheMsg');
   msg.textContent = 'Local cache cleared on this device.';
   msg.classList.remove('hidden');
@@ -1782,16 +1839,17 @@ document.getElementById('clearCacheConfirmBtn').onclick = () => {
 // quotaGb (-1 = unlimited), totalVideosDownloaded, ... }. Falls back to a
 // friendly note if the server doesn't recognize the action, rather than
 // breaking the rest of Settings.
-let usageReportLoaded = false;
-
-// Rows of the per-type video table. Flip `live` to true (and give it a stat key)
-// when a type starts being counted — until then it stays greyed out at 0.
+// Job types shown on Home (button counters) and in the lifetime table. `key` is the stat key getUserStats returns
+// inside periodVideos / queued / lifetimeVideos; a missing key simply shows 0.
 const USAGE_VIDEO_TYPES = [
-  { emoji: '☁️', label: 'Videos To GDrive',     short: 'GDrive',     key: 'VGD', live: true },
-  { emoji: '🔍', label: 'Videos identified',    short: 'Identified', key: 'VID', live: false },
-  { emoji: '🎵', label: 'Videos to MP3',        short: 'MP3',        key: 'MP3', live: true },
-  { emoji: '🎞️', label: 'Videos To Image Seq.', short: 'Image Seq.', key: 'SEQ', live: true }
+  { emoji: '☁️', label: 'Videos To GDrive',     key: 'VGD' },
+  { emoji: '🔍', label: 'Videos identified',    key: 'VID' },
+  { emoji: '🎵', label: 'Videos to MP3',        key: 'MP3' },
+  { emoji: '🎞️', label: 'Videos To Image Seq.', key: 'SEQ' },
+  { emoji: '💬', label: "Videos' Captions",     key: 'CAP' }
 ];
+// Saved numbers older than this are refreshed quietly in the background when Home opens.
+const USAGE_STALE_MS = 10 * 60 * 1000;
 
 function fmtUsageDate(v) {
   const d = new Date(v);
@@ -1837,8 +1895,8 @@ function usageStarsHtml() {
 }
 
 // ---- Usage report cache (per device, localStorage) ----
-// Shown instantly on later opens; only the Refresh button (or a finished quota
-// period) goes back to the server.
+// Shown instantly on every open; refreshed quietly once older than USAGE_STALE_MS,
+// or on demand with the Refresh button (or when a quota period finishes).
 function usageCacheKey_(id) { return 'usage4:' + id; }
 function getCachedUsage(id) {
   try {
@@ -1849,13 +1907,18 @@ function getCachedUsage(id) {
     return d;
   } catch (e) { return null; }
 }
-function setCachedUsage(id, data) {
-  try { localStorage.setItem(usageCacheKey_(id), JSON.stringify(data)); } catch (e) { /* best-effort only */ }
+function setCachedUsage(id, data, keepStamp) {
+  try {
+    const d = Object.assign({}, data);
+    if (!(keepStamp && d._ts)) d._ts = Date.now();
+    localStorage.setItem(usageCacheKey_(id), JSON.stringify(d));
+  } catch (e) { /* best-effort only */ }
 }
 function clearCachedUsage(id) {
   try { localStorage.removeItem(usageCacheKey_(id)); localStorage.removeItem('usage1:' + id); localStorage.removeItem('usage2:' + id); localStorage.removeItem('usage3:' + id); } catch (e) { /* ignore */ }
 }
 
+// Fills the Home dashboard. The layout itself is static HTML; this only writes numbers, dates and the ring.
 function renderUsage(result) {
   const r = result || {};
   const used = Number(r.gbUsedThisPeriod) || 0;
@@ -1866,62 +1929,74 @@ function renderUsage(result) {
   const sub = unlimited ? '∞ Unlimited'
     : hasLimit ? `${fmtGb(Math.max(0, r.quotaGb - used))} GB / ${fmtGb(r.quotaGb)} GB`
     : '';
+  const n = (obj, key) => Number(obj && obj[key]) || 0;
 
-  const periodN = t => t.live ? (Number(r.periodVideos && r.periodVideos[t.key]) || 0) : 0;
-  const queuedN = t => t.live ? (Number(r.queued && r.queued[t.key]) || 0) : 0;
-  const lifeN = t => t.live ? (Number(r.lifetimeVideos && r.lifetimeVideos[t.key]) || 0) : 0;
-  const cls = t => t.live ? '' : 'off';
+  // Row 1
+  document.getElementById('uqStart').textContent = fmtUsageDate(r.periodStart);
+  document.getElementById('uqEnd').textContent = fmtUsageDate(r.periodEnd);
 
-  const periodRows = USAGE_VIDEO_TYPES.map(t => `<tr class="${cls(t)}"><td>${t.emoji}</td><td>${t.short}</td><td>${queuedN(t)}</td><td>${periodN(t)}</td></tr>`).join('');
-  const rows = USAGE_VIDEO_TYPES.map(t => `<tr class="${cls(t)}"><td>${t.emoji}</td><td>${t.label}</td><td>${lifeN(t)}</td></tr>`).join('');
-  const total = USAGE_VIDEO_TYPES.reduce((sum, t) => sum + lifeN(t), 0);
+  // Row 2: ring + the counters under each job button
+  document.getElementById('uqRingWrap').innerHTML = `
+    ${usageRingSvg(leftPct, tier.color)}
+    ${tier.stars ? usageStarsHtml() : ''}
+    <div class="uqCenter">
+      <div class="uqNum" style="color:${tier.color}">${fmtGb(used)}<small>GB</small></div>
+      <div class="uqSub">${sub}</div>
+    </div>`;
+  USAGE_VIDEO_TYPES.forEach(t => {
+    document.getElementById('uqQ_' + t.key).textContent = n(r.queued, t.key);
+    document.getElementById('uqU_' + t.key).textContent = n(r.periodVideos, t.key);
+  });
 
-  document.getElementById('uqContent').innerHTML = `
-    <h3 class="uqHead">Quota Period</h3>
-    <div class="uqGrid">
-      <div class="uqDates">
-        <div><div class="uqLabel">📅 Start</div><div class="uqValue">${fmtUsageDate(r.periodStart)}</div></div>
-        <div><div class="uqLabel">🏁 End</div><div class="uqValue">${fmtUsageDate(r.periodEnd)}</div></div>
-      </div>
-      <div class="uqRingWrap">
-        ${usageRingSvg(leftPct, tier.color)}
-        ${tier.stars ? usageStarsHtml() : ''}
-        <div class="uqCenter">
-          <div class="uqNum" style="color:${tier.color}">${fmtGb(used)}<small>GB</small></div>
-          <div class="uqSub">${sub}</div>
-        </div>
-      </div>
-    </div>
-    <table class="uqPeriod"><thead><tr><th colspan="2"></th><th>In queue</th><th>Uploaded</th></tr></thead><tbody>${periodRows}</tbody></table>
-
-    <h3 class="uqHead uqHeadLife">Usage Lifetime</h3>
-    <div class="uqLifeGb">
-      <div class="uqLabel">Lifetime GBs usage · download &amp; upload</div>
-      <div class="uqBig">${fmtGb(Number(r.totalGbLifetime) || 0)}<small>GB</small></div>
-    </div>
-    <table class="uqTable"><tbody>${rows}<tr class="uqTotal"><td>📦</td><td>Total downloads</td><td>${total}</td></tr></tbody></table>`;
+  // Row 3
+  const total = USAGE_VIDEO_TYPES.reduce((sum, t) => sum + n(r.lifetimeVideos, t.key), 0);
+  document.getElementById('uqLifeGb').innerHTML = `${fmtGb(Number(r.totalGbLifetime) || 0)}<small>GB</small>`;
+  document.getElementById('uqLifeRows').innerHTML =
+    USAGE_VIDEO_TYPES.map(t => `<tr><td>${t.emoji}</td><td>${t.label}</td><td>${n(r.lifetimeVideos, t.key)}</td></tr>`).join('') +
+    `<tr class="uqTotal"><td>📦</td><td>Total downloads</td><td>${total}</td></tr>`;
 }
 
+// Saved numbers get an old timestamp, so the next Home open refreshes them from the server even if this refresh never lands.
+function markUsageStale() {
+  try {
+    const raw = localStorage.getItem(usageCacheKey_(chatId));
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    d._ts = 0;
+    localStorage.setItem(usageCacheKey_(chatId), JSON.stringify(d));
+  } catch (e) { /* best-effort only */ }
+}
+// After a job is submitted: ask the server for the real numbers. Nothing is changed locally before the answer arrives.
+let usageRefreshPromise = null;
+function refreshUsageAfterSubmit() {
+  markUsageStale();
+  usageRefreshPromise = loadUsageReport(true, true);
+  return usageRefreshPromise;
+}
 function setUsageBusy(busy) {
   document.getElementById('uqWrap').classList.toggle('busy', busy);
   document.getElementById('usageRefreshBtn').disabled = busy;
 }
 
+let usageReportLoaded = false;
 let usageFetching = false;
-async function loadUsageReport(force) {
+async function loadUsageReport(force, silent) {
   if (usageFetching) return;
   if (!force) {
-    if (usageReportLoaded) return;
     const cached = getCachedUsage(chatId);
-    if (cached) { renderUsage(cached); usageReportLoaded = true; return; }
+    if (cached) {
+      if (!usageReportLoaded) { renderUsage(cached); usageReportLoaded = true; }
+      if (Date.now() - (cached._ts || 0) < USAGE_STALE_MS) return; // fresh enough, no server call
+    }
   }
 
   const hadData = usageReportLoaded;
+  const quiet = !!silent || (!force && hadData); // background refresh: no overlay, no error text
   const msg = document.getElementById('uqMsg');
   msg.textContent = '';
   if (!hadData) renderUsage(null); // greyed-out placeholder behind the loading overlay
   usageFetching = true;
-  setUsageBusy(true);
+  if (!quiet) setUsageBusy(true);
 
   let result, failed = '';
   try {
@@ -1932,23 +2007,17 @@ async function loadUsageReport(force) {
   }
 
   if (failed) {
-    if (hadData) msg.textContent = 'Couldn\u2019t refresh \u2014 showing saved data.';
-    else document.getElementById('uqContent').innerHTML = `<div class="emptyNote">${failed}</div>`;
+    if (!quiet) msg.textContent = hadData ? 'Couldn\u2019t refresh \u2014 showing saved data.' : failed;
   } else {
     setCachedUsage(chatId, result);
     renderUsage(result);
     usageReportLoaded = true;
   }
   usageFetching = false;
-  setUsageBusy(false);
+  if (!quiet) setUsageBusy(false);
 }
 
-// The button sits inside <summary>, so keep a tap on it from also folding the section.
-document.getElementById('usageRefreshBtn').onclick = (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  loadUsageReport(true);
-};
+document.getElementById('usageRefreshBtn').onclick = () => loadUsageReport(true);
 
 // ---- Download form validation ----
 function updateDownloadEnabled() {
@@ -2930,6 +2999,7 @@ document.getElementById('download-btn').onclick = async () => {
   }
 
   setButtonLoading(btn, false);
+  refreshUsageAfterSubmit();
   // U+2068/U+2069 isolate the name so Arabic (RTL) text doesn't scramble the surrounding English sentence
   document.getElementById('queuedMsg').textContent =
     `"\u2068${name}\u2069" has been added to your queue — we'll send you a message on Telegram as soon as it's ready.`;
@@ -2939,6 +3009,7 @@ document.getElementById('download-btn').onclick = async () => {
 document.getElementById('queuedCloseBtn').onclick = () => {
   closeOverlay('queuedOverlay');
   clearAllFields(); // in case close() doesn't fire, leave the form ready anyway
+  closeJobPopup();  // ...and land back on Home
   closeAppAfterSuccess();
 };
 
