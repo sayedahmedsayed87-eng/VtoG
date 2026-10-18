@@ -45,6 +45,7 @@ body{height:100vh;height:100dvh;font-family:-apple-system,BlinkMacSystemFont,"Se
 .header-fab{flex:none;width:40px;height:40px;min-height:0;margin:2px 0 0;padding:0;border-radius:50%;display:grid;place-items:center;background:var(--surface);color:var(--button);border:1px solid var(--border);box-shadow:0 6px 18px rgba(0,0,0,.10)}
 .header-fab svg{width:20px;height:20px}
 .header-fab:active{transform:scale(.9)}
+.header-fab:disabled{opacity:.45}
 
 .main{flex:1;display:flex;flex-direction:column;justify-content:flex-start;padding-top:2px}
 .screen{display:none}
@@ -248,19 +249,27 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .uqLabel{font-size:12px;font-weight:700;color:var(--muted)}
 .uqValue{margin-top:2px;font-size:14px;font-weight:800;line-height:1.3}
 /* ---- Home: usage dashboard (3 rows, no cards) ---- */
-.homeRows{display:flex;flex-direction:column;gap:8px;margin-top:0}
+.homeRows{display:flex;flex-direction:column;gap:8px;margin-top:0;--glow:#2ecc71}
 .uqPanel{background:none;border:0;border-radius:0;padding:0;box-shadow:none}
 .uqDatesRow{display:flex;align-items:center;gap:12px;padding:0 2px}
-.uqDate{flex:1;min-width:0}
+.uqDate{flex:none;min-width:0}
+.uqDateEnd{text-align:right}
+.uqDatesRow .uqValue{font-size:13px;white-space:nowrap}
+.uqMid{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center}
+.uqDaysNum{font-size:20px;font-weight:900;line-height:1;font-variant-numeric:tabular-nums;color:var(--glow)}
+.uqDaysLbl{margin:1px 0 4px;font-size:9px;font-weight:700;line-height:1;color:var(--muted)}
+.uqDots{width:100%;display:grid;grid-template-columns:repeat(30,1fr);gap:1.5px}
+.uqDots i{display:block;aspect-ratio:1;border-radius:50%;background:currentColor;opacity:.14}
+.uqDots i.on{background:var(--glow);opacity:1;box-shadow:0 0 5px 0 color-mix(in srgb,var(--glow) 75%,transparent)}
 .uqStagePanel{padding:0}
-/* Row 2: a 100 x 71 box. Positions are percentages of it, so the layout scales with the screen width.
+/* Row 2: a 100 x 75 box. Positions are percentages of it, so the layout scales with the screen width.
    9 slots sit 40deg apart on a circle (slot 1 = top centre, then symmetric pairs). Slots 1-5 are used;
    the 4 lower slots are reserved for future job types and are simply not rendered (see the comment in the HTML). */
-.uqStage{position:relative;width:100%;aspect-ratio:100/71;--glow:#2ecc71}
-.uqRingWrap{position:absolute;left:50%;top:70.42%;width:38%;aspect-ratio:1;transform:translate(-50%,-50%)}
+.uqStage{position:relative;width:100%;aspect-ratio:100/75}
+.uqRingWrap{position:absolute;left:50%;top:69.33%;width:44%;aspect-ratio:1;transform:translate(-50%,-50%)}
 .uqRingWrap svg{display:block;width:100%;height:100%;overflow:visible}
-.uqRingWrap .uqNum{font-size:clamp(20px,7vw,30px)}
-.uqRingWrap .uqSub{margin-top:3px;font-size:clamp(9px,2.7vw,11px)}
+.uqRingWrap .uqNum{font-size:clamp(22px,8vw,34px)}
+.uqRingWrap .uqSub{margin-top:3px;font-size:clamp(9px,2.8vw,11.5px)}
 .sat{position:absolute;left:calc(var(--x) * 1%);top:calc(var(--y) * 1%);width:21%;aspect-ratio:1;transform:translate(-50%,-50%)}
 .satBtn{position:absolute;inset:0;width:100%;height:100%;min-height:0;margin:0;padding:0 4px 5px;border-radius:50%;flex-direction:column;justify-content:center;gap:2px;color:var(--text);
   border:1px solid color-mix(in srgb,var(--glow) 28%,var(--border));
@@ -299,8 +308,6 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 }
 @media (prefers-reduced-motion:reduce){.uqStar{animation:none}}
 
-.usageRefreshBtn{flex:none;margin-left:auto;padding:8px 11px;font-size:14px}
-.usageRefreshBtn:disabled{opacity:.45}
 .uqWrap{position:relative}
 .uqContent{transition:opacity .2s,filter .2s}
 .uqWrap.busy .uqContent{opacity:.3;filter:grayscale(1);pointer-events:none}
@@ -372,6 +379,9 @@ button.folderPickBtn:active{transform:scale(.98)}
       </div>
     </div>
     <div class="header-actions">
+      <button id="usageRefreshBtn" type="button" class="header-fab hidden" aria-label="Refresh usage report">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+      </button>
       <button id="helpFab" type="button" class="header-fab" aria-label="Help">
         <svg viewBox="5 3.5 14 15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
       </button>
@@ -440,8 +450,12 @@ button.folderPickBtn:active{transform:scale(.98)}
           <!-- Row 1 -->
           <div class="uqPanel uqDatesRow">
             <div class="uqDate"><div class="uqLabel">📅 Start</div><div class="uqValue" id="uqStart">—</div></div>
-            <div class="uqDate"><div class="uqLabel">🏁 End</div><div class="uqValue" id="uqEnd">—</div></div>
-            <button type="button" id="usageRefreshBtn" class="addFolderFab usageRefreshBtn" aria-label="Refresh usage report"><span>🔄</span></button>
+            <div class="uqMid">
+              <div class="uqDaysNum" id="uqDaysNum">—</div>
+              <div class="uqDaysLbl">days left</div>
+              <div class="uqDots" id="uqDots"></div>
+            </div>
+            <div class="uqDate uqDateEnd"><div class="uqLabel">🏁 End</div><div class="uqValue" id="uqEnd">—</div></div>
           </div>
 
           <!-- Row 2 -->
@@ -449,29 +463,29 @@ button.folderPickBtn:active{transform:scale(.98)}
             <div class="uqStage">
               <div class="uqRingWrap" id="uqRingWrap"></div>
 
-              <div class="sat" style="--x:50;--y:18.31">
+              <div class="sat" style="--x:50;--y:24.67">
                 <button type="button" id="homeGdriveBtn" class="satBtn" aria-label="Video to Gdrive"><span class="satEmoji">📥</span><span class="satName">Video to<br>GDrive</span></button>
-                <div class="satInfo">In queue <b id="uqQ_VGD">0</b><br>Uploaded <b id="uqU_VGD">0</b></div>
+                <div class="satInfo up">In queue <b id="uqQ_VGD">0</b><br>Uploaded <b id="uqU_VGD">0</b></div>
               </div>
-              <div class="sat" style="--x:26.22;--y:30.51">
+              <div class="sat" style="--x:28.47;--y:35.12">
                 <button type="button" id="homeMp3Btn" class="satBtn" aria-label="Video to MP3"><span class="satEmoji">🎵</span><span class="satName">Video to<br>MP3</span></button>
                 <div class="satInfo up">In queue <b id="uqQ_MP3">0</b><br>Uploaded <b id="uqU_MP3">0</b></div>
               </div>
-              <div class="sat" style="--x:73.78;--y:30.51">
+              <div class="sat" style="--x:71.53;--y:35.12">
                 <button type="button" id="homeIdentifyBtn" class="satBtn" aria-label="Movie/Series Identifier"><span class="satEmoji">🎬</span><span class="satName">Movie/Series<br>Identifier</span></button>
                 <div class="satInfo up">In queue <b id="uqQ_VID">0</b><br>Uploaded <b id="uqU_VID">0</b></div>
               </div>
-              <div class="sat" style="--x:13.56;--y:61.37">
+              <div class="sat" style="--x:17.01;--y:61.57">
                 <button type="button" id="homeImageSeqBtn" class="satBtn" aria-label="Video to Image Sequence"><span class="satEmoji">🖼️</span><span class="satName">Video to<br>Image<br>Sequence</span></button>
                 <div class="satInfo">In queue <b id="uqQ_SEQ">0</b><br>Uploaded <b id="uqU_SEQ">0</b></div>
               </div>
-              <div class="sat" style="--x:86.44;--y:61.37">
+              <div class="sat" style="--x:82.99;--y:61.57">
                 <button type="button" id="homeCaptionBtn" class="satBtn" aria-label="Video's Caption"><span class="satEmoji">💬</span><span class="satName">Video's<br>Caption</span></button>
                 <div class="satInfo">In queue <b id="uqQ_CAP">0</b><br>Uploaded <b id="uqU_CAP">0</b></div>
               </div>
               <!-- Reserved slots for future job types (not rendered). Same 40deg circle: use class "sat" with
-                   --x / --y of 18.0,96.5 | 82.0,96.5 (120deg) and 37.4,119.4 | 62.6,119.4 (160deg);
-                   the stage's aspect-ratio (100/71) must be enlarged to make room before adding them. -->
+                   --x / --y of 21.0,91.7 | 79.0,91.7 (120deg) and 38.5,111.3 | 61.5,111.3 (160deg);
+                   the stage's aspect-ratio (100/75) must be enlarged to make room before adding them. -->
             </div>
           </div>
 
@@ -850,6 +864,7 @@ function showScreen(id) {
   document.getElementById('pageTitle').textContent = SCREEN_TITLES[id] || 'Clip Sense';
   const showGear = SETTINGS_SCREENS.includes(id);
   document.getElementById('settingsFab').classList.toggle('hidden', !showGear);
+  document.getElementById('usageRefreshBtn').classList.toggle('hidden', !showGear);
   // Never leave the Settings popup open over a screen that has no gear (e.g. a forced sign-out).
   if (!showGear && !document.getElementById('settingsOverlay').classList.contains('hidden')) closeSettings();
 }
@@ -1935,9 +1950,22 @@ function renderUsage(result) {
   // Row 1
   document.getElementById('uqStart').textContent = fmtUsageDate(r.periodStart);
   document.getElementById('uqEnd').textContent = fmtUsageDate(r.periodEnd);
+  // 30 dots = the quota period: filled = days already past, empty = days left
+  {
+    const DAY = 86400000, DOTS = 30;
+    const t0 = new Date(r.periodStart).getTime(), t1 = new Date(r.periodEnd).getTime();
+    let left = null, filled = 0;
+    if (!isNaN(t0) && !isNaN(t1) && t1 > t0) {
+      const total = Math.max(1, Math.round((t1 - t0) / DAY));
+      left = Math.max(0, Math.min(total, Math.ceil((t1 - Date.now()) / DAY)));
+      filled = Math.max(0, Math.min(DOTS, Math.round(DOTS * (1 - left / total))));
+    }
+    document.getElementById('uqDaysNum').textContent = left === null ? '—' : left;
+    document.getElementById('uqDots').innerHTML = Array.from({ length: DOTS }, (_, i) => `<i class="${i < filled ? 'on' : ''}"></i>`).join('');
+  }
 
   // Row 2: ring + the counters under each job button
-  const stageEl = document.querySelector('.uqStage');
+  const stageEl = document.getElementById('uqContent');
   if (stageEl) stageEl.style.setProperty('--glow', tier.color);
   document.getElementById('uqRingWrap').innerHTML = `
     ${usageRingSvg(leftPct, tier.color)}
