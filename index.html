@@ -394,6 +394,129 @@ button.folderPickBtn:active{transform:scale(.98)}
   .message{margin:6px 0 12px}
   button{min-height:44px;margin-top:10px;padding:10px 14px;font-size:14.5px}
 }
+
+.welcomeBody{text-align:center;overflow-y:auto}
+.welcomeBody .icon{margin-top:6px}
+.welcomeAccount{margin:0 0 6px;font-size:13px;font-weight:800;color:var(--button)}
+.welcomeNote{margin-top:12px;padding:10px 12px;border-radius:12px;text-align:center;font-size:13px;line-height:1.5;color:var(--muted);background:color-mix(in srgb,var(--muted) 9%,transparent)}
+
+/* ================= Spotlight tutorial ================= */
+html.tutLock,html.tutLock body{overscroll-behavior:none}
+html.tutLock .app{overflow:hidden!important}
+
+/* Slim "take the tour" strip at the top of Home (hidden once the tour is finished or skipped) */
+.tutWelcome{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px;padding:7px 7px 7px 12px;border-radius:14px;background:color-mix(in srgb,var(--button) 9%,transparent);border:1px solid color-mix(in srgb,var(--button) 24%,transparent);font-size:13px;font-weight:750;line-height:1.3}
+.tutWelcome button{width:auto;flex:none;min-height:0;margin:0;padding:8px 14px;border-radius:10px;font-size:13px;font-weight:800}
+button.tutReplayBtn{margin-top:14px}
+
+/* The fixed layer above every overlay */
+.tutRoot{position:fixed;inset:0;z-index:2147483300;pointer-events:none;box-sizing:border-box;
+  padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);
+  --c:var(--button);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.tutRoot[data-level=tap]{--c:var(--success)}
+.tutRoot[data-level=important]{--c:var(--danger)}
+
+/* Shield: catches taps that land inside the cut-out on every step except "tap" steps */
+.tutShield{position:absolute;inset:0;pointer-events:auto;touch-action:none;background:transparent}
+.tutRoot.tapMode .tutShield{pointer-events:none}
+
+/* Dim: plain tint everywhere; blurred where backdrop-filter exists. The cut-out is a clip-path hole, so it stays sharp
+   and (where the shield is off) lets taps through to the real button underneath. */
+.tutDim{position:absolute;inset:0;pointer-events:auto;touch-action:none;background:rgba(8,12,20,.66);opacity:0;transition:opacity .25s ease}
+.tutRoot.on .tutDim{opacity:1}
+@supports ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
+  .tutDim{background:rgba(8,12,20,.42);-webkit-backdrop-filter:blur(3.5px);backdrop-filter:blur(3.5px)}
+}
+/* Old WebViews without clip-path:path(): one tinted box-shadow hole around everything, no blur */
+.tutRoot.noClip .tutDim{display:none}
+.tutBoxFb{display:none;position:absolute;pointer-events:none;border-radius:14px;box-shadow:0 0 0 200vmax rgba(8,12,20,.66)}
+.tutRoot.noClip .tutBoxFb{display:block}
+
+/* Highlights */
+.tutHls{position:absolute;inset:0;pointer-events:none}
+.tutHl{position:absolute;left:0;top:0;pointer-events:none;opacity:0}
+.tutHlRing,.tutHlPulse{position:absolute;inset:-1px;border-radius:14px;pointer-events:none}
+.tutHlRing{box-shadow:0 0 0 2px var(--c),0 0 14px 3px color-mix(in srgb,var(--c) 62%,transparent),inset 0 0 12px 1px color-mix(in srgb,var(--c) 34%,transparent)}
+.tutRoot[data-level=important] .tutHlRing{box-shadow:0 0 0 2px var(--c),0 0 20px 5px color-mix(in srgb,var(--c) 70%,transparent),inset 0 0 14px 2px color-mix(in srgb,var(--c) 40%,transparent)}
+.tutHlPulse{animation:tutPulse 2.6s ease-out infinite;animation-delay:var(--wd,0s)}
+@keyframes tutPulse{
+  0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--c) 55%,transparent)}
+  70%,100%{box-shadow:0 0 0 12px color-mix(in srgb,var(--c) 0%,transparent)}
+}
+/* Comet: a bright head with a fading tail, three dashes whose leading ends coincide */
+.tutComet{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;filter:drop-shadow(0 0 4px var(--c))}
+.tutComet rect{fill:none;stroke:var(--c);stroke-linecap:round;stroke-width:3.2;animation-duration:3.4s;animation-timing-function:linear;animation-iteration-count:infinite;animation-delay:var(--wd,0s)}
+.tutComet .cA{stroke-dasharray:18 82;stroke-opacity:.28;animation-name:tutCometA}
+.tutComet .cB{stroke-dasharray:11 89;stroke-opacity:.55;animation-name:tutCometB}
+.tutComet .cC{stroke-dasharray:4 96;stroke-opacity:1;animation-name:tutCometC}
+@keyframes tutCometA{from{stroke-dashoffset:14}to{stroke-dashoffset:-86}}
+@keyframes tutCometB{from{stroke-dashoffset:7}to{stroke-dashoffset:-93}}
+@keyframes tutCometC{from{stroke-dashoffset:0}to{stroke-dashoffset:-100}}
+/* Level badges (only on the first highlight) */
+.tutBadge{position:absolute;display:none;pointer-events:none;line-height:1}
+.tutHl:first-child[data-lv=important] .tutBadge{display:grid;place-items:center;right:-8px;top:-11px;min-width:22px;height:22px;padding:0 3px;border-radius:99px;font-size:13px;background:var(--danger);box-shadow:0 2px 8px rgba(0,0,0,.4);animation:tutBadgeBeat 1.1s ease-in-out infinite}
+.tutHl:first-child[data-lv=tap] .tutBadge{display:block;right:-6px;bottom:-22px;font-size:22px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.45));animation:tutNudge 1.3s ease-in-out infinite}
+@keyframes tutNudge{0%,100%{transform:translateY(4px)}50%{transform:translateY(-3px)}}
+@keyframes tutBadgeBeat{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+
+/* "Example" chip */
+.tutChip{position:absolute;left:0;top:0;pointer-events:none;opacity:0;transition:opacity .2s;padding:3px 11px;border-radius:99px;font-size:11.5px;font-weight:850;white-space:nowrap;background:#ffd54a;color:#3b2a00;box-shadow:0 2px 10px rgba(0,0,0,.35)}
+.tutChip.on{opacity:1}
+
+/* Tip card */
+.tutCard{position:absolute;left:0;top:0;width:min(calc(100% - 24px),340px);display:flex;flex-direction:column;pointer-events:auto;touch-action:manipulation;
+  background:var(--surface);color:var(--text);border-radius:20px;padding:12px 16px 14px;
+  box-shadow:0 18px 50px rgba(0,0,0,.42),0 0 0 1px var(--border);opacity:0;
+  transition:opacity .2s ease,transform .34s cubic-bezier(.2,.8,.2,1);will-change:transform,opacity}
+.tutRoot.on .tutCard{opacity:1}
+.tutCard.swap,.tutRoot.on .tutCard.swap{opacity:0}
+.tutCard.noAnim{transition:opacity .2s ease}
+.tutRoot[data-level=important] .tutCard{box-shadow:0 18px 50px rgba(0,0,0,.42),0 0 0 2px var(--danger),0 0 26px color-mix(in srgb,var(--danger) 45%,transparent)}
+.tutCaret{position:absolute;width:14px;height:14px;margin-left:-7px;left:var(--ax,50%);background:var(--surface);transform:rotate(45deg);border-radius:3px;display:none}
+.tutCard[data-side=below] .tutCaret{display:block;top:-6px}
+.tutCard[data-side=above] .tutCaret{display:block;bottom:-6px}
+.tutMain,.tutConfirm{position:relative;display:flex;flex-direction:column;min-height:0;flex:1}
+.tutConfirm{display:none}
+.tutCard.confirming .tutMain{display:none}
+.tutCard.confirming .tutConfirm{display:flex}
+.tutHead{flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:30px;margin-bottom:4px}
+.tutLevel{display:inline-flex;align-items:center;gap:6px;padding:3px 10px 3px 7px;border-radius:99px;font-size:12px;font-weight:800;color:var(--c);background:color-mix(in srgb,var(--c) 13%,transparent)}
+.tutLvlIco{font-size:13px;line-height:1}
+.tutBody{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.tutTitle{font-size:17px;font-weight:850;line-height:1.25;letter-spacing:-.2px}
+.tutText{margin-top:6px;font-size:14px;line-height:1.55;font-weight:550;white-space:pre-line;color:color-mix(in srgb,var(--text) 80%,transparent)}
+.tutCard.center{text-align:center}
+.tutCard.center .tutHead{display:none}
+.tutCard.center .tutTitle{font-size:19px;margin-top:2px}
+.tutDots{flex:none;display:flex;flex-wrap:wrap;gap:4px;margin-top:12px}
+.tutCard.center .tutDots{justify-content:center}
+.tutDots i{display:block;width:6px;height:6px;border-radius:99px;background:color-mix(in srgb,var(--muted) 34%,transparent);transition:width .25s,background .25s}
+.tutDots i.past{background:color-mix(in srgb,var(--c) 52%,transparent)}
+.tutDots i.on{width:16px;background:var(--c)}
+.tutFoot{flex:none;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}
+.tutConfirm .tutFoot{margin-top:14px}
+.tutRoot button.tutBtn{width:auto;min-height:40px;margin:0;padding:9px 18px;border-radius:12px;font-size:14.5px;font-weight:800;gap:7px}
+.tutRoot button.tutBtn.primary{background:var(--c);color:#fff}
+.tutRoot button.tutBtn.primary:disabled{opacity:.6}
+.tutRoot button.tutBtn.ghost{background:color-mix(in srgb,var(--muted) 12%,transparent);color:var(--text)}
+.tutRoot button.tutBtn.tutSkip{min-height:30px;padding:4px 8px;margin-right:-6px;background:transparent;color:var(--muted);font-size:13px;font-weight:750}
+.tutRoot button.tutBtn:active{transform:scale(.96)}
+.tutRoot button.tutBtn:focus-visible{outline:2px solid var(--c);outline-offset:2px}
+.tutFoot .tutNext{margin-inline-start:auto}
+
+/* Part 2 extras: how-to / safety tip / live note blocks and the "later" link inside the tip card */
+.tutHow,.tutTip,.tutNote{display:none;margin-top:8px;padding:8px 11px;border-radius:12px;font-size:13px;line-height:1.5;font-weight:600;white-space:pre-line}
+.tutHow{background:color-mix(in srgb,var(--c) 10%,transparent);color:var(--text)}
+.tutTip{background:color-mix(in srgb,var(--muted) 11%,transparent);color:color-mix(in srgb,var(--text) 86%,transparent)}
+.tutNote{background:color-mix(in srgb,var(--success) 14%,transparent);color:var(--text)}
+.tutRoot button.tutBtn.tutLater{display:none;flex:none;width:100%;min-height:34px;margin:8px 0 0;padding:6px 8px;background:transparent;color:var(--muted);font-size:13.5px;font-weight:750;text-decoration:underline}
+
+@media (prefers-reduced-motion:reduce){
+  .tutHlPulse,.tutBadge{animation:none!important}
+  .tutComet{display:none}
+  .tutCard,.tutDim,.tutChip{transition:none}
+  .tutDots i{transition:none}
+}
 </style>
 </head>
 <body>
@@ -474,11 +597,15 @@ button.folderPickBtn:active{transform:scale(.98)}
 
     <!-- Home screen: usage dashboard. Row 1 = quota dates, row 2 = ring + job buttons, row 3 = lifetime usage -->
     <section id="screen-home" class="screen">
+      <div class="tutWelcome hidden" id="tutWelcome">
+        <span id="tutWelcomeText">👋 New here?</span>
+        <button type="button" id="welcomeTutorialBtn">Take the tour</button>
+      </div>
       <div class="uqWrap" id="uqWrap">
         <div class="uqContent homeRows" id="uqContent">
 
           <!-- Row 1 -->
-          <div class="uqPanel uqDatesRow">
+          <div class="uqPanel uqDatesRow" id="uqDatesRow">
             <div class="uqDate"><div class="uqLabel">📅 Start</div><div class="uqValue" id="uqStart">—</div></div>
             <div class="uqMid">
               <div class="uqDaysNum" id="uqDaysNum">—</div>
@@ -520,7 +647,7 @@ button.folderPickBtn:active{transform:scale(.98)}
           </div>
 
           <!-- Row 3 -->
-          <div class="uqPanel">
+          <div class="uqPanel" id="uqLifePanel">
             <div class="uqLifeHead">
               <div class="uqBig" id="uqLifeGb">0<small>GB</small></div>
               <h3 class="uqHead">Usage Lifetime</h3>
@@ -772,6 +899,22 @@ button.folderPickBtn:active{transform:scale(.98)}
   </div>
 </div>
 
+<!-- Welcome overlay: first-time and deactivated users. Not dismissible by tapping outside. -->
+<div id="welcomeOverlay" class="help-overlay hidden">
+  <div class="help-inner">
+    <div class="help-body welcomeBody">
+      <div class="icon" id="welcomeIcon">👋</div>
+      <h2 id="welcomeTitle">Welcome to Clip Sense!</h2>
+      <p class="message" id="welcomeMsg"></p>
+      <div class="welcomeAccount hidden" id="welcomeAccount"></div>
+    </div>
+    <button id="welcomeRegisterBtn">Register &amp; get started</button>
+    <button id="welcomeOverlayTourBtn" class="secondary">🎓 Start tutorial</button>
+    <div id="welcomeNote" class="welcomeNote hidden">The tutorial is coming soon — we're putting the finishing touches on it. 🎓</div>
+    <div id="welcome-error" class="error-text hidden"></div>
+  </div>
+</div>
+
 <!-- Help overlay -->
 <div id="helpOverlay" class="help-overlay hidden">
   <div class="help-inner">
@@ -781,6 +924,7 @@ button.folderPickBtn:active{transform:scale(.98)}
     </div>
     <div class="help-body">
       <div id="helpList"></div>
+      <button type="button" id="replayTutorialBtn" class="secondary tutReplayBtn hidden">▶ Replay tutorial</button>
     </div>
   </div>
 </div>
@@ -1595,7 +1739,7 @@ async function verifyRegistrationInBackground() {
   }
   if (isErrorResult(result)) return;
 
-  if (result.registered) {
+  if (result.registered && !isDeactivated(result)) {
     if (result.username !== currentUsername) {
       currentUsername = result.username;
       document.getElementById('welcome').textContent = '@' + currentUsername;
@@ -1625,7 +1769,7 @@ async function checkRegistration() {
   }
   if (result.error) return showLoadError(result.error);
 
-  if (result.registered) {
+  if (result.registered && !isDeactivated(result)) {
     currentUsername = result.username;
     document.getElementById('welcome').textContent = '@' + currentUsername;
     setCachedProfile(chatId, { registered: true, username: result.username });
@@ -1633,7 +1777,7 @@ async function checkRegistration() {
     enterHomeOrDeepLink();
   } else {
     clearCachedProfile(chatId);
-    await handleUnregistered();
+    await handleUnregistered(isDeactivated(result));
   }
 }
 
@@ -1647,7 +1791,16 @@ function showLoadError(message) {
 document.getElementById('loadingRetryBtn').onclick = checkRegistration;
 
 // ---- Registration (automatic, based on the user's Telegram @username) ----
-async function handleUnregistered() {
+// The server may report a deactivated account as { status: 'deactivated' } or { deactivated: true }
+// (with or without registered: true). Either way the person sees the Welcome popup, not the app.
+function isDeactivated(r) {
+  if (!r) return false;
+  if (r.deactivated === true) return true;
+  const st = String(r.status || '').toLowerCase();
+  return st === 'deactivated' || st === 'inactive' || st === 'disabled';
+}
+
+async function handleUnregistered(deactivated) {
   const tgUsername = (tgUser && tgUser.username) ? tgUser.username : '';
   if (!tgUsername) {
     // No @username on the Telegram account — guide the user to set one.
@@ -1655,7 +1808,7 @@ async function handleUnregistered() {
     showScreen('screen-no-username');
     return;
   }
-  await autoRegister(tgUsername);
+  showWelcome(!!deactivated, tgUsername);
 }
 
 async function autoRegister(username) {
@@ -1678,8 +1831,62 @@ async function autoRegister(username) {
   document.getElementById('welcome').textContent = '@' + currentUsername;
   setCachedProfile(chatId, { registered: true, username: result.username });
   setFooterStatus('Ready');
+  haptic('success');
   enterHomeOrDeepLink();
+  if (tutorialStartAfterRegister) {
+    tutorialStartAfterRegister = false;
+    // Gives Home a moment to draw; startTutorial() itself skips if another popup is open.
+    setTimeout(() => { if (window.CSTutorial) window.CSTutorial.start({ restart: true }); }, 700);
+  }
 }
+
+// ---- Welcome popup (first-time and deactivated users) ----
+// Registration no longer happens silently: the person taps the button below.
+// "Start tutorial" registers the account first, then opens Home and starts the spotlight tour.
+var tutorialStartAfterRegister = false;
+let welcomeUsername = '';
+
+function showWelcome(deactivated, username) {
+  welcomeUsername = username || '';
+  tutorialStartAfterRegister = false;
+  showScreen('screen-loading'); // quiet backdrop behind the popup
+  document.getElementById('loadingIcon').textContent = '👋';
+  document.getElementById('loadingTitle').textContent = 'Clip Sense';
+  document.getElementById('loadingMsg').textContent = '';
+  document.getElementById('loadingRetryBtn').classList.add('hidden');
+  setFooterStatus(deactivated ? 'Account inactive' : 'Welcome');
+
+  document.getElementById('welcomeIcon').textContent = deactivated ? '🤗' : '👋';
+  document.getElementById('welcomeTitle').textContent = deactivated ? 'Welcome back!' : 'Welcome to Clip Sense!';
+  document.getElementById('welcomeMsg').textContent = deactivated
+    ? 'Your account is currently inactive. Reactivate it with one tap and pick up right where you left off. 💛'
+    : 'Save and transform your favorite videos, straight to your Google Drive, in just a few taps. Let\u2019s get your account ready! 🎬';
+  document.getElementById('welcomeRegisterBtn').textContent = deactivated ? 'Reactivate my account' : 'Register & get started';
+  const acc = document.getElementById('welcomeAccount');
+  acc.textContent = welcomeUsername ? (deactivated ? 'Account: @' : 'Your account will be set up as @') + welcomeUsername : '';
+  acc.classList.toggle('hidden', !welcomeUsername);
+  document.getElementById('welcomeNote').classList.add('hidden');
+  clearError('welcome-error');
+
+  document.querySelectorAll('.help-overlay').forEach(o => o.classList.add('hidden')); // nothing else open behind it
+  openOverlay('welcomeOverlay');
+}
+
+document.getElementById('welcomeRegisterBtn').onclick = async () => {
+  if (!welcomeUsername) { showError('welcome-error', 'We couldn\u2019t read your Telegram username. Please reopen the app.'); return; }
+  haptic('tap');
+  closeOverlay('welcomeOverlay');
+  await autoRegister(welcomeUsername);
+};
+document.getElementById('welcomeOverlayTourBtn').onclick = () => {
+  haptic('tap');
+  if (window.TUTORIAL_READY) {
+    tutorialStartAfterRegister = true;
+    document.getElementById('welcomeRegisterBtn').onclick(); // register first, the tour starts on Home
+    return;
+  }
+  document.getElementById('welcomeNote').classList.remove('hidden');
+};
 
 // Telegram only hands us initDataUnsafe.user at launch, so after the user
 // sets a username in Telegram they need a fresh launch to pick it up.
@@ -3278,6 +3485,7 @@ document.getElementById('feedback-send-btn').onclick = async () => {
 // Back closes the top-most open popup (returning to Home / the previous popup). Only when nothing is open
 // does it leave the app. Uses Telegram's BackButton, plus a history guard for plain browsers / WebViews.
 const OVERLAY_CLOSERS = {
+  welcomeOverlay: () => { if (tg && tg.close) tg.close(); }, // registration is required: back leaves the app
   feedbackOverlay: closeFeedback,
   helpOverlay: () => closeOverlay('helpOverlay'),
   clearCacheOverlay: () => document.getElementById('clearCacheCancelBtn').click(),
@@ -3295,6 +3503,7 @@ function topOpenOverlay() {
   return open.length ? open[open.length - 1] : null; // later in the page = drawn on top
 }
 function handleBack() {
+  if (window.CSTutorial && window.CSTutorial.active) { window.CSTutorial.back(); return true; }
   const o = topOpenOverlay();
   if (!o) return false;
   const closer = OVERLAY_CLOSERS[o.id];
@@ -3304,7 +3513,7 @@ function handleBack() {
 const tgBackBtn = (tg && tg.BackButton && tg.isVersionAtLeast && tg.isVersionAtLeast('6.1')) ? tg.BackButton : null;
 function syncBackButton() {
   if (!tgBackBtn) return;
-  if (topOpenOverlay()) tgBackBtn.show(); else tgBackBtn.hide();
+  if (topOpenOverlay() || (window.CSTutorial && window.CSTutorial.active)) tgBackBtn.show(); else tgBackBtn.hide();
 }
 if (tgBackBtn) tgBackBtn.onClick(handleBack);
 const backObserver = new MutationObserver(syncBackButton);
@@ -3316,6 +3525,965 @@ window.addEventListener('popstate', () => {
   if (handleBack()) { try { history.pushState({ cs: 'guard' }, ''); } catch (e) {} return; }
   if (tg && tg.close) tg.close(); else { try { history.back(); } catch (e) {} }
 });
+
+// ============================================================================
+// Spotlight tutorial: text dictionary + step data + engine
+// ============================================================================
+
+// Light haptic tick (Telegram only; silently does nothing in a plain browser).
+function haptic(kind) {
+  try {
+    const h = tg && tg.HapticFeedback;
+    if (!h) return;
+    if (kind === 'important' || kind === 'warning') h.notificationOccurred('warning');
+    else if (kind === 'success') h.notificationOccurred('success');
+    else if (kind === 'tap') h.impactOccurred('light');
+    else h.selectionChanged();
+  } catch (e) { /* best-effort only */ }
+}
+
+// ---- 1. Every string the tutorial shows lives here. To translate: copy the "en" block under a new
+//         language code ("ar", "fr", ...) and translate the values. Missing keys fall back to English.
+//         The language comes from the Telegram user's language_code. {n} / {total} are placeholders. ----
+const TUTORIAL_TEXT = {
+  en: {
+    'ui.dialog': 'Clip Sense tutorial',
+    'ui.next': 'Next',
+    'ui.back': 'Back',
+    'ui.skip': 'Skip',
+    'ui.start': 'Start tour',
+    'ui.done': 'Done',
+    'ui.syncing': 'Syncing…',
+    'ui.skipTitle': 'Skip the tour?',
+    'ui.skipText': 'You can replay it any time from Help.',
+    'ui.keep': 'Keep going',
+    'ui.skipYes': 'Skip tour',
+    'ui.example': 'Example',
+    'ui.level.info': 'Good to know',
+    'ui.level.tap': 'Tap',
+    'ui.level.important': 'Important',
+    'ui.welcomeLead': '👋 New here?',
+    'ui.welcomeBtn': 'Take the tour',
+    'ui.welcomeResume': 'Continue tour ({n}/{total})',
+    'ui.replay': '▶ Replay tutorial',
+    'ui.later': 'I’ll do this later',
+    'ui.haveFolders': '✅ You already have folders. Add another, or continue.',
+    'ui.addFailed': 'That link didn’t work. Check it, or tap Back to try another.',
+    'ui.addBlocked': 'This link can’t be added yet. Tap Back and check it.',
+
+    'step.intro.title': 'Welcome to Clip Sense 👋',
+    'step.intro.text': 'Save videos to your Google Drive, turn them into MP3s, picture sets or captions, and find out where a clip is from.\n\nLet’s take a quick look around. It takes about a minute.',
+
+    'step.header.title': 'Your shortcuts',
+    'step.header.text': '🔄 Refresh your numbers\n💬 Send us feedback\n❓ Find help\n⚙️ Open settings and your Drive folders',
+
+    'step.dates.title': 'Your quota period',
+    'step.dates.text': 'Your quota renews on a schedule. Here you can see when this period started, when it ends, and how many days are left.',
+
+    'step.ring.title': 'Your usage',
+    'step.ring.text': 'The big number is what you’ve used so far, and the ring empties as your quota is used up. These are example numbers. Yours come back when you move on.',
+
+    'step.buttons.title': 'Every file goes to your Drive',
+    'step.buttons.text': 'These five buttons are your tools. Whatever they make is saved in the Google Drive folder you choose, so you always know where to find it.',
+
+    'step.gdrive.title': 'Video to GDrive',
+    'step.gdrive.text': 'Tap this to paste a Facebook, Instagram, YouTube or X link, pick a folder, and the video lands in your Drive.',
+
+    'step.mp3.title': 'Video to MP3',
+    'step.mp3.text': 'Only want the sound? Tap this, paste a link, and get an MP3 in your Drive folder.',
+
+    'step.imgseq.title': 'Video to Image Seq.',
+    'step.imgseq.text': 'Tap this to turn a video into a series of still pictures, saved together in your Drive folder.',
+
+    'step.caption.title': 'Video’s Caption',
+    'step.caption.text': 'Tap this to grab a video’s caption and save it in your Drive folder.',
+
+    'step.identify.title': 'Movie/Series Identifier',
+    'step.identify.text': 'Not sure what a clip is from? Tap this, paste its link, and we’ll tell you the movie or series.',
+
+    'step.counters.title': 'Queue and uploads',
+    'step.counters.text': 'Under each tool you’ll see what’s waiting in the queue and what’s already been uploaded this period (identified, for the Identifier).',
+
+    'step.life.title': 'Your lifetime totals',
+    'step.life.text': 'Everything you’ve downloaded and uploaded since you joined: the total in GB, and a count for each tool.',
+
+    // ---- Part 2: Settings and Google Drive folders ----
+    'step.settingsFab.title': '⚙️ Open Settings',
+    'step.settingsFab.text': 'Before your first download, set up a Drive folder. Tap ⚙️ to open Settings.',
+
+    'step.appTab.title': 'App settings',
+    'step.appTab.text': 'Tap App settings. This is where your Google Drive folders live.',
+
+    'step.drive.title': 'Your folder must be shared',
+    'step.drive.text': 'Your Drive folder must be shared as “Anyone with the link → Editor”. Without Editor access, the app can’t add your videos.',
+    'step.drive.how': 'In Drive: ⋮ → Share → General access → Anyone with the link → Editor → Copy link.',
+    'step.drive.tip': '🔒 Use a folder just for Clip Sense, because anyone with the link can edit it.',
+
+    'step.addFolder.title': 'Add your first folder',
+    'step.addFolder.text': 'Tap Add folder, then paste the share link of a Drive folder, for example one named “Kids”. Your videos will be saved there.',
+
+    'step.addLink.title': 'Paste the link',
+    'step.addLink.text': 'Paste the folder’s share link here. Its name comes straight from Drive.',
+
+    'step.addConfirm.title': 'Save it',
+    'step.addConfirm.text': 'Now tap Add folder to save it.',
+
+    'step.addDone.title': 'Folder added ✅',
+    'step.addDone.text': 'Your new folder shows up in this list, ready to pick as a destination.',
+
+    'step.userTab.title': 'User settings',
+    'step.userTab.text': 'Tap User settings to see your personal switches.',
+
+    'step.toggles.title': 'Two handy switches',
+    'step.toggles.text': 'These switches make life easier. “Auto-fill name” fills in the video title for you. “Remember last folder” picks your last folder again next time.',
+
+    'step.closeSettings.title': 'All set here',
+    'step.closeSettings.text': 'All set here. Tap ✕ to go back Home.'
+  }
+  // ar: { ... same keys ... },
+};
+
+// ---- 2. Steps are data. target: CSS selector or list of selectors (null = centred card).
+//         shape: rect | circle.  level: info | tap | important.  mode: next | tap | wait.
+//           next = Next button; tap = tapping the target also advances (the tap goes through to the real
+//           control); wait = Next stays disabled until the step's effect (fx) has finished.
+//         title/text are keys into TUTORIAL_TEXT.  Optional: next (label key), fx, chip, wave, needsData.
+//         Part 2 additions:
+//           ui     = the screen state this step needs: { settings, tab:'user'|'app', add }. Anything missing means "closed".
+//                    Every step re-applies it, so Back, resume and replay always land in the right popup state.
+//           until  = condition (gets the engine state). On a "tap" step it is polled after the real tap; the tour moves on once
+//                    it is true, or after `timeout` ms anyway (the next step re-applies its own ui, so the fallback is safe).
+//                    On a "wait" step Next unlocks when it is true (or after `timeout`). On a "type" step it is watched
+//                    and the tour moves on after it has been true for ~0.75 s.
+//           mode 'type' = the target is live (taps and typing reach it) but a tap does not advance; Next stays available.
+//           tapOk  = tap steps only: return false when the tap does nothing (e.g. a blocked button), so we don't wait for it.
+//           abort  = stop waiting after a tap (e.g. an error is showing). later = id of the step the "I'll do this later" link jumps to.
+//           how / tip = extra text blocks (keys). note = function returning a key for a live note under the text, or ''.
+//           branch = the step only belongs to the "add a folder" branch (skipped by Back-fallback and by resume).
+//           enter  = hook run when the step is shown. ----
+const tutById = id => document.getElementById(id);
+const tutIsOpen = id => { const e = tutById(id); return !!(e && !e.classList.contains('hidden')); };
+const tutPaneActive = which => { const e = tutById('settingsPane' + which); return !!(e && e.classList.contains('active')); };
+const tutFolderCount = () => document.querySelectorAll('#manage-folder-list .manageFolderItem').length;
+const tutAddError = () => { const e = tutById('add-folder-error'); return !!(e && !e.classList.contains('hidden') && e.textContent.trim()); };
+const tutAddBlocked = () => { const b = tutById('add-folder-btn'); return !!(b && b.classList.contains('blocked')); };
+const TUTORIAL_STEPS = [
+  { id: 'intro',    target: null, shape: 'rect', level: 'info', mode: 'next', title: 'step.intro.title', text: 'step.intro.text', next: 'ui.start' },
+  { id: 'header',   target: ['#usageRefreshBtn', '#feedbackFab', '#helpFab', '#settingsFab'], shape: 'circle', level: 'info', mode: 'next', title: 'step.header.title', text: 'step.header.text' },
+  { id: 'dates',    target: '#uqDatesRow', shape: 'rect', level: 'info', mode: 'next', needsData: true, title: 'step.dates.title', text: 'step.dates.text' },
+  { id: 'ring',     target: '#uqRingWrap', shape: 'circle', level: 'info', mode: 'wait', needsData: true, fx: 'ringDemo', title: 'step.ring.title', text: 'step.ring.text' },
+  { id: 'buttons',  target: ['#homeGdriveBtn', '#homeMp3Btn', '#homeIdentifyBtn', '#homeImageSeqBtn', '#homeCaptionBtn'], shape: 'circle', level: 'important', mode: 'next', wave: true, title: 'step.buttons.title', text: 'step.buttons.text' },
+  { id: 'gdrive',   target: '#homeGdriveBtn',   shape: 'circle', level: 'tap', mode: 'next', title: 'step.gdrive.title',   text: 'step.gdrive.text' },
+  { id: 'mp3',      target: '#homeMp3Btn',      shape: 'circle', level: 'tap', mode: 'next', title: 'step.mp3.title',      text: 'step.mp3.text' },
+  { id: 'imgseq',   target: '#homeImageSeqBtn', shape: 'circle', level: 'tap', mode: 'next', title: 'step.imgseq.title',   text: 'step.imgseq.text' },
+  { id: 'caption',  target: '#homeCaptionBtn',  shape: 'circle', level: 'tap', mode: 'next', title: 'step.caption.title',  text: 'step.caption.text' },
+  { id: 'identify', target: '#homeIdentifyBtn', shape: 'circle', level: 'tap', mode: 'next', title: 'step.identify.title', text: 'step.identify.text' },
+  { id: 'counters', target: '.sat .satInfo', shape: 'rect', level: 'info', mode: 'wait', needsData: true, fx: 'countersDemo', title: 'step.counters.title', text: 'step.counters.text' },
+  { id: 'life',     target: '#uqLifePanel', shape: 'rect', level: 'info', mode: 'wait', needsData: true, fx: 'lifeDemo', title: 'step.life.title', text: 'step.life.text' },
+
+  // ---- Part 2: Settings and Google Drive folders ----
+  { id: 'settingsFab', target: '#settingsFab', shape: 'circle', level: 'tap', mode: 'tap', ui: {},
+    until: () => tutIsOpen('settingsOverlay'), timeout: 1500, title: 'step.settingsFab.title', text: 'step.settingsFab.text' },
+  { id: 'appTab', target: '#settingsTabApp', shape: 'rect', level: 'tap', mode: 'tap', ui: { settings: true, tab: 'user' },
+    until: () => tutPaneActive('App'), timeout: 1500, title: 'step.appTab.title', text: 'step.appTab.text' },
+  { id: 'drive', target: '#settingsPaneApp .settingsCategoryBody', shape: 'rect', level: 'important', mode: 'next', ui: { settings: true, tab: 'app' },
+    title: 'step.drive.title', text: 'step.drive.text', how: 'step.drive.how', tip: 'step.drive.tip' },
+  { id: 'addFolder', target: '#openAddFolderBtn', shape: 'rect', level: 'important', mode: 'tap', ui: { settings: true, tab: 'app' },
+    until: () => tutIsOpen('addFolderOverlay'), timeout: 1500, later: 'userTab',
+    nextSkip: 'userTab', nextSkipIf: () => tutFolderCount() > 0,
+    note: () => (tutFolderCount() > 0 ? 'ui.haveFolders' : ''), title: 'step.addFolder.title', text: 'step.addFolder.text' },
+  { id: 'addLink', branch: true, target: '#new-folder-link', shape: 'rect', level: 'tap', mode: 'type', ui: { settings: true, tab: 'app', add: true },
+    until: T => { const v = (tutById('new-folder-link').value || '').trim(); return !!extractFolderIdFromLink(v) && v !== T.typeBase; },
+    title: 'step.addLink.title', text: 'step.addLink.text' },
+  { id: 'addConfirm', branch: true, target: '#add-folder-btn', shape: 'rect', level: 'tap', mode: 'tap', ui: { settings: true, tab: 'app', add: true },
+    tapOk: () => !tutAddBlocked(), until: () => !tutIsOpen('addFolderOverlay'), abort: () => tutAddError(), timeout: 20000,
+    enter: T => { T.folderBase = tutFolderCount(); },
+    note: () => (tutAddError() ? 'ui.addFailed' : tutAddBlocked() ? 'ui.addBlocked' : ''), title: 'step.addConfirm.title', text: 'step.addConfirm.text' },
+  { id: 'addDone', branch: true, target: '#manage-folder-list', shape: 'rect', level: 'info', mode: 'wait', ui: { settings: true, tab: 'app' },
+    until: T => tutFolderCount() > (T.folderBase || 0), timeout: 10000, title: 'step.addDone.title', text: 'step.addDone.text' },
+  { id: 'userTab', target: '#settingsTabUser', shape: 'rect', level: 'tap', mode: 'tap', ui: { settings: true, tab: 'app' },
+    until: () => tutPaneActive('User'), timeout: 1500, title: 'step.userTab.title', text: 'step.userTab.text' },
+  { id: 'toggles', target: '#settingsPaneUser .toggleRow', shape: 'rect', level: 'info', mode: 'next', ui: { settings: true, tab: 'user' },
+    title: 'step.toggles.title', text: 'step.toggles.text' },
+  { id: 'closeSettings', target: '#settingsCloseBtn', shape: 'circle', level: 'tap', mode: 'tap', ui: { settings: true, tab: 'user' },
+    until: () => !tutIsOpen('settingsOverlay'), timeout: 1500, next: 'ui.done', title: 'step.closeSettings.title', text: 'step.closeSettings.text' }
+];
+
+window.TUTORIAL_READY = false;
+
+(function () {
+  const STEPS = TUTORIAL_STEPS;
+  const mqReduce = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  const reduced = () => !!(mqReduce && mqReduce.matches);
+  const CLIP_OK = !!(window.CSS && CSS.supports && CSS.supports('clip-path', 'path(evenodd,"M0 0H1V1Z")'));
+  const RTL_LANGS = ['ar', 'he', 'fa', 'ur'];
+
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const raf = () => new Promise(r => requestAnimationFrame(() => r()));
+  const frames = async n => { for (let i = 0; i < n; i++) await raf(); };
+  const q = (s, r) => (r || document).querySelector(s);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const easeOut = t => 1 - Math.pow(1 - t, 3);
+  const rnd = n => Math.round(n * 10) / 10;
+
+  // ---- text ----
+  let langOverride = null;
+  function lang() {
+    const c = String(langOverride || (tgUser && tgUser.language_code) || document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+    return TUTORIAL_TEXT[c] ? c : 'en';
+  }
+  function t(key, vars) {
+    let s = (TUTORIAL_TEXT[lang()] || {})[key];
+    if (s == null) s = TUTORIAL_TEXT.en[key];
+    if (s == null) return key;
+    return vars ? s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null ? vars[k] : m)) : s;
+  }
+
+  // ---- saved progress (per Telegram user, per device) ----
+  const progKey = () => 'tutorial_v1:' + (chatId || 'anon');
+  function loadProgress() { try { return JSON.parse(localStorage.getItem(progKey()) || 'null'); } catch (e) { return null; } }
+  function saveProgress(p) { try { localStorage.setItem(progKey(), JSON.stringify(Object.assign({ ts: Date.now() }, p))); } catch (e) { /* best-effort */ } }
+
+  // ---- state ----
+  const T = {
+    active: false, token: 0, idx: -1, step: null, els: [], moving: false, canNext: false, syncing: false, confirming: false,
+    view: [], target: [], hls: [], anim: null, fx: null, cardShown: false, vw: 0, vh: 0, scroll0: 0,
+    demoHold: false, pendingUsage: null, timer: 0, resizeTimer: 0,
+    hist: [], applying: false, tapTimer: 0, watch: 0, typeBase: '', folderBase: 0
+  };
+  let root, dim, boxFb, hlLayer, chipEl, card, elLevel, elTitle, elText, elDots, btnBack, btnNext, btnSkip, elCTitle, elCText, btnKeep, btnSkipYes, elHow, elTip, elNote, btnLater;
+  const appEl = () => q('.app');
+  const isHome = () => { const s = document.getElementById('screen-home'); return !!(s && s.classList.contains('active')); };
+
+  // While a demo is on screen, real usage renders wait here and are applied when the demo is restored.
+  const _renderUsage = renderUsage;
+  renderUsage = function (r) {
+    if (T.demoHold) { T.pendingUsage = { r: r }; return; }
+    return _renderUsage(r);
+  };
+
+  // ---------------------------------------------------------------- geometry
+  const isVisible = el => { const r = el.getBoundingClientRect(); return r.width > 1 && r.height > 1 && getComputedStyle(el).visibility !== 'hidden'; };
+  function resolveTargets(step) {
+    const out = [];
+    [].concat(step.target || []).forEach(sel => document.querySelectorAll(sel).forEach(e => { if (!out.includes(e) && isVisible(e)) out.push(e); }));
+    return out;
+  }
+  function holesFromEls(els, shape) {
+    const rs = els.map(el => el.getBoundingClientRect());
+    const maxPad = shape === 'circle' ? 4 : 5;
+    // Neighbouring cut-outs must not touch (an overlap would re-dim the shared area), so the padding shrinks when targets sit close together.
+    const padFor = i => {
+      let pad = maxPad;
+      rs.forEach((o, j) => {
+        if (j === i) return;
+        const a = rs[i];
+        const gap = shape === 'circle'
+          ? Math.hypot((a.left + a.width / 2) - (o.left + o.width / 2), (a.top + a.height / 2) - (o.top + o.height / 2)) - Math.max(a.width, a.height) / 2 - Math.max(o.width, o.height) / 2
+          : Math.max(o.left - a.right, a.left - o.right, o.top - a.bottom, a.top - o.bottom);
+        pad = Math.min(pad, Math.max(0, gap / 2 - 2.5));
+      });
+      return pad;
+    };
+    return els.map((el, i) => {
+      const r = rs[i], pad = padFor(i);
+      if (shape === 'circle') {
+        const d = Math.max(r.width, r.height) + pad * 2, cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        return { x: rnd(cx - d / 2), y: rnd(cy - d / 2), w: rnd(d), h: rnd(d), r: rnd(d / 2) };
+      }
+      const cr = parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0, w = r.width + pad * 2, h = r.height + pad * 2;
+      return { x: rnd(r.left - pad), y: rnd(r.top - pad), w: rnd(w), h: rnd(h), r: rnd(Math.min(Math.max(cr + pad, 10), Math.min(w, h) / 2)) };
+    });
+  }
+  const collapsed = h => ({ x: h.x + h.w / 2, y: h.y + h.h / 2, w: 0, h: 0, r: 0 });
+  const center = h => ({ x: h.x + h.w / 2, y: h.y + h.h / 2 });
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  function unionOf(holes) {
+    const hs = (holes || []).filter(h => h.w > 1 && h.h > 1);
+    if (!hs.length) return null;
+    const left = Math.min(...hs.map(h => h.x)), top = Math.min(...hs.map(h => h.y));
+    const right = Math.max(...hs.map(h => h.x + h.w)), bottom = Math.max(...hs.map(h => h.y + h.h));
+    return { left, top, right, bottom, cx: (left + right) / 2, cy: (top + bottom) / 2 };
+  }
+  function sameHoles(a, b) {
+    if (a.length !== b.length) return false;
+    return a.every((h, i) => Math.abs(h.x - b[i].x) < .75 && Math.abs(h.y - b[i].y) < .75 && Math.abs(h.w - b[i].w) < .75 && Math.abs(h.h - b[i].h) < .75);
+  }
+  function holePath(h) {
+    const r = Math.min(h.r, h.w / 2, h.h / 2), x = h.x, y = h.y, w = h.w, b = h.y + h.h, rt = h.x + h.w;
+    const f = n => +n.toFixed(1);
+    return `M${f(x + r)} ${f(y)}H${f(rt - r)}A${f(r)} ${f(r)} 0 0 1 ${f(rt)} ${f(y + r)}V${f(b - r)}A${f(r)} ${f(r)} 0 0 1 ${f(rt - r)} ${f(b)}H${f(x + r)}A${f(r)} ${f(r)} 0 0 1 ${f(x)} ${f(b - r)}V${f(y + r)}A${f(r)} ${f(r)} 0 0 1 ${f(x + r)} ${f(y)}Z`;
+  }
+
+  // ---------------------------------------------------------------- painting
+  function ensureHls(n) {
+    while (T.hls.length < n) {
+      const el = document.createElement('div');
+      el.className = 'tutHl';
+      el.innerHTML = '<div class="tutHlRing"></div><div class="tutHlPulse"></div>' +
+        '<svg class="tutComet" aria-hidden="true"><rect class="cA" pathLength="100"></rect><rect class="cB" pathLength="100"></rect><rect class="cC" pathLength="100"></rect></svg>' +
+        '<span class="tutBadge"></span>';
+      hlLayer.appendChild(el);
+      T.hls.push({ el, ring: el.children[0], pulse: el.children[1], rects: Array.from(el.querySelectorAll('rect')), badge: el.querySelector('.tutBadge') });
+    }
+  }
+  function paint() {
+    if (!root) return;
+    const v = T.view, live = v.filter(h => h.w >= 1 && h.h >= 1);
+    // dim + cut-outs
+    if (CLIP_OK) {
+      let cp = 'none';
+      if (live.length) {
+        let d = `M0 0H${T.vw}V${T.vh}H0Z`;
+        live.forEach(h => { d += holePath(h); });
+        cp = `path(evenodd,"${d}")`;
+      }
+      dim.style.clipPath = cp;
+      dim.style.webkitClipPath = cp;
+    } else {
+      const u = unionOf(live);
+      if (u) { boxFb.style.cssText = `left:${u.left}px;top:${u.top}px;width:${u.right - u.left}px;height:${u.bottom - u.top}px`; }
+      else { boxFb.style.cssText = 'left:50%;top:50%;width:0;height:0'; }
+    }
+    // highlights
+    ensureHls(v.length);
+    const lv = T.step ? T.step.level : 'info', badge = lv === 'important' ? '❗' : lv === 'tap' ? '👆' : '';
+    T.hls.forEach((o, i) => {
+      const h = v[i];
+      if (!h || h.w < 2 || h.h < 2) { o.el.style.opacity = '0'; return; }
+      const rr = Math.min(h.r, h.w / 2, h.h / 2);
+      o.el.dataset.lv = lv;
+      if (o.badge.textContent !== badge) o.badge.textContent = badge;
+      o.el.style.opacity = String(clamp(Math.min(h.w, h.h) / 26, 0, 1));
+      o.el.style.width = h.w + 'px';
+      o.el.style.height = h.h + 'px';
+      o.el.style.transform = `translate(${h.x}px,${h.y}px)`;
+      o.ring.style.borderRadius = (rr + 1) + 'px';
+      o.pulse.style.borderRadius = (rr + 1) + 'px';
+      o.rects.forEach(rc => {
+        rc.setAttribute('x', -1.5); rc.setAttribute('y', -1.5);
+        rc.setAttribute('width', h.w + 3); rc.setAttribute('height', h.h + 3);
+        rc.setAttribute('rx', rr + 1.5); rc.setAttribute('ry', rr + 1.5);
+      });
+    });
+    // example chip rides on top of the highlighted area
+    const u = unionOf(live);
+    if (u) chipEl.style.transform = `translate(${Math.round(u.cx - chipEl.offsetWidth / 2)}px,${Math.round(Math.max(4, u.top - chipEl.offsetHeight - 4))}px)`;
+  }
+
+  // Interpolate T.view from one hole list to another (same length). delays: per-hole start delay in ms.
+  function tweenList(A, B, ms, delays) {
+    if (T.anim) T.anim.cancel();
+    return new Promise(resolve => {
+      const setEnd = () => { T.view = B.map(h => Object.assign({}, h)); paint(); };
+      if (reduced() || ms <= 0 || !A.length) { setEnd(); resolve(true); return; }
+      const maxD = delays ? Math.max.apply(null, delays) : 0;
+      const t0 = performance.now();
+      let rid = 0, dead = false;
+      const anim = { cancel() { dead = true; cancelAnimationFrame(rid); T.anim = null; resolve(false); } };
+      T.anim = anim;
+      const frame = now => {
+        if (dead) return;
+        const el = now - t0;
+        T.view = A.map((a, i) => {
+          const p = ease(clamp((el - (delays ? delays[i] : 0)) / ms, 0, 1)), b = B[i];
+          return { x: lerp(a.x, b.x, p), y: lerp(a.y, b.y, p), w: lerp(a.w, b.w, p), h: lerp(a.h, b.h, p), r: lerp(a.r, b.r, p) };
+        });
+        paint();
+        if (el >= ms + maxD) { T.anim = null; setEnd(); resolve(true); return; }
+        rid = requestAnimationFrame(frame);
+      };
+      rid = requestAnimationFrame(frame);
+    });
+  }
+  // Pair every new hole with the nearest old one (so highlights glide to the closest target);
+  // new holes without a partner grow from nothing, old holes without a partner shrink away.
+  function matchHoles(from, to) {
+    const pairs = [];
+    from.forEach((f, i) => to.forEach((g, j) => pairs.push([dist(center(f), center(g)), i, j])));
+    pairs.sort((a, b) => a[0] - b[0]);
+    const uF = new Set(), uT = new Set(), al = new Array(to.length);
+    pairs.forEach(p => { if (uF.has(p[1]) || uT.has(p[2])) return; uF.add(p[1]); uT.add(p[2]); al[p[2]] = from[p[1]]; });
+    const A = [], B = [];
+    to.forEach((g, j) => { A.push(al[j] || collapsed(g)); B.push(g); });
+    from.forEach((f, i) => { if (!uF.has(i)) { A.push(f); B.push(collapsed(f)); } });
+    return { A, B };
+  }
+  // Move from the current cut-outs to the new ones. Nearby targets glide; anything else (or a step that
+  // needs the page scrolled) fades out and back in. measure() is called once the old cut-outs are gone,
+  // so a scroll can happen while nothing is highlighted. onTo(holes) fires as soon as the new holes are known.
+  async function transitionTo(measure, scroll, wave, alive, onTo) {
+    const from = T.view.filter(h => h.w >= 1 && h.h >= 1);
+    let to = null;
+    if (!scroll && !wave) to = measure();
+    const uf = unionOf(from), ut = to ? unionOf(to) : null;
+    const near = !!(uf && ut && Math.hypot(uf.cx - ut.cx, uf.cy - ut.cy) < Math.max(170, T.vh * .3));
+    if (near) {
+      onTo(to);
+      const m = matchHoles(from, to);
+      await tweenList(m.A, m.B, reduced() ? 0 : 380, null);
+      if (!alive()) return;
+    } else {
+      if (from.length) {
+        await tweenList(from, from.map(collapsed), reduced() ? 0 : 170, null);
+        if (!alive()) return;
+      }
+      if (scroll) { scroll(); await frames(2); if (!alive()) return; }
+      to = measure();
+      onTo(to);
+      let delays = null;
+      if (wave && to.length > 1) {
+        ensureHls(to.length);
+        const c0 = center(to[0]), ds = to.map(h => dist(center(h), c0)), mx = Math.max.apply(null, ds) || 1;
+        delays = ds.map(d => reduced() ? 0 : d / mx * 420);
+        T.hls.forEach((o, i) => o.el.style.setProperty('--wd', (ds[i] / mx * 0.9).toFixed(2) + 's'));
+      } else {
+        ensureHls(to.length);
+        T.hls.forEach(o => o.el.style.setProperty('--wd', '0s'));
+      }
+      T.view = to.map(collapsed); paint();
+      await tweenList(to.map(collapsed), to, reduced() ? 0 : 280, delays);
+      if (!alive()) return;
+    }
+    T.view = to.map(h => Object.assign({}, h)); paint();
+  }
+
+  // ---------------------------------------------------------------- scrolling & card placement
+  // How far (px) to scroll the page so the target is fully visible AND the tip card has room above or below it.
+  function fitScroll(els, ch, chip) {
+    const app = appEl();
+    if (!app || !els.length || els.every(e => e.closest('.header') || e.closest('.help-overlay'))) return 0;
+    const vh = T.vh, m = 12, gap = 16 + (chip ? 14 : 0);
+    const hd = q('.header'), safeTop = (hd ? hd.getBoundingClientRect().bottom : 0) + 4;
+    const rects = els.map(e => e.getBoundingClientRect());
+    const U = { top: Math.min(...rects.map(r => r.top)), bottom: Math.max(...rects.map(r => r.bottom)) };
+    const lo = -app.scrollTop, hi = Math.max(0, app.scrollHeight - app.clientHeight) - app.scrollTop;
+    const best = [];
+    const tryRange = (min, max) => {
+      min = Math.max(min, lo); max = Math.min(max, hi);
+      if (min <= max) best.push(clamp(0, min, max));
+    };
+    tryRange(U.bottom - (vh - m - gap - ch), U.top - safeTop);         // card below the target
+    tryRange(U.bottom - (vh - 4), U.top - (safeTop + gap + ch));       // card above the target
+    if (best.length) return best.sort((a, b) => Math.abs(a) - Math.abs(b))[0];
+    return clamp(clamp(0, U.bottom - (vh - 4), U.top - safeTop), lo, hi); // no room for the card: just make it visible
+  }
+  function placeCard(anim) {
+    if (!card) return;
+    card.style.maxHeight = '';
+    const cs = getComputedStyle(root), pT = parseFloat(cs.paddingTop) || 0, pB = parseFloat(cs.paddingBottom) || 0, pL = parseFloat(cs.paddingLeft) || 0, pR = parseFloat(cs.paddingRight) || 0;
+    const vw = T.vw, vh = T.vh, m = 12, minX = Math.max(m, pL), maxX = vw - Math.max(m, pR), minY = Math.max(m, pT), maxY = vh - Math.max(m, pB);
+    const cw = card.offsetWidth; let ch = card.offsetHeight, x, y, side = 'center';
+    const U = unionOf(T.target);
+    if (!U) { x = (vw - cw) / 2; y = (vh - ch) / 2; }
+    else {
+      const gap = 16 + (T.step && T.step.fx ? 14 : 0);
+      const below = maxY - (U.bottom + gap), above = (U.top - gap) - minY;
+      if (below >= ch) side = 'below';
+      else if (above >= ch) side = 'above';
+      else { side = below >= above ? 'below' : 'above'; card.style.maxHeight = Math.max(140, Math.floor(Math.max(below, above))) + 'px'; ch = card.offsetHeight; }
+      y = clamp(side === 'below' ? U.bottom + gap : U.top - gap - ch, minY, Math.max(minY, maxY - ch));
+      x = clamp(U.cx - cw / 2, minX, Math.max(minX, maxX - cw));
+      card.style.setProperty('--ax', clamp(U.cx - x, 24, cw - 24) + 'px');
+    }
+    card.dataset.side = side;
+    card.classList.toggle('noAnim', !anim);
+    card.style.transform = `translate(${Math.round(x)}px,${Math.round(y)}px)`;
+  }
+
+  // ---------------------------------------------------------------- card content
+  function renderCard(step, idx) {
+    const last = idx === STEPS.length - 1, hasTarget = [].concat(step.target || []).length > 0;
+    root.setAttribute('data-level', step.level);
+    card.classList.toggle('center', !hasTarget);
+    elLevel.textContent = '';
+    const ico = document.createElement('span'); ico.className = 'tutLvlIco'; ico.textContent = step.level === 'important' ? '❗' : step.level === 'tap' ? '👆' : '💡';
+    elLevel.appendChild(ico); elLevel.appendChild(document.createTextNode(t('ui.level.' + step.level)));
+    elTitle.textContent = t(step.title);
+    elText.textContent = t(step.text);
+    const blk = (el, key) => { el.textContent = key ? t(key) : ''; el.style.display = key ? 'block' : 'none'; };
+    blk(elHow, step.how); blk(elTip, step.tip);
+    elNote.dataset.key = ''; updateNote(true);
+    btnLater.textContent = t('ui.later'); btnLater.style.display = step.later ? 'flex' : 'none';
+    Array.from(elDots.children).forEach((d, i) => { d.className = i < idx ? 'past' : i === idx ? 'on' : ''; });
+    btnSkip.style.visibility = last ? 'hidden' : 'visible';
+    btnBack.style.visibility = idx === 0 ? 'hidden' : 'visible';
+    renderNext();
+  }
+  // Live note under the text (e.g. "You already have folders"). Re-checked from tick().
+  function updateNote(silent) {
+    if (!elNote || !T.step) return;
+    let key = '';
+    try { key = T.step.note ? T.step.note(T) || '' : ''; } catch (e) { key = ''; }
+    if (elNote.dataset.key === key) return;
+    elNote.dataset.key = key;
+    elNote.textContent = key ? t(key) : '';
+    elNote.style.display = key ? 'block' : 'none';
+    if (!silent && card && T.cardShown) placeCard(false);
+  }
+  function renderNext() {
+    const step = T.step; if (!step) return;
+    btnNext.textContent = '';
+    const loading = T.syncing || (!T.canNext && step.mode === 'wait');
+    if (loading) { const sp = document.createElement('span'); sp.className = 'spinner'; btnNext.appendChild(sp); }
+    btnNext.appendChild(document.createTextNode(T.syncing ? t('ui.syncing') : t(step.next || 'ui.next')));
+    btnNext.disabled = !T.canNext;
+  }
+  function setConfirm(on) {
+    T.confirming = !!on;
+    card.classList.toggle('confirming', !!on);
+    if (on) { elCTitle.textContent = t('ui.skipTitle'); elCText.textContent = t('ui.skipText'); btnKeep.textContent = t('ui.keep'); btnSkipYes.textContent = t('ui.skipYes'); }
+    placeCard(false);
+    try { (on ? btnKeep : btnNext).focus({ preventScroll: true }); } catch (e) { /* ignore */ }
+  }
+
+  // ---------------------------------------------------------------- effects (Home tour demos)
+  function runCount(ms, onFrame) {
+    let dead = false, rid = 0, resolveFn;
+    const done = new Promise(res => { resolveFn = res; });
+    if (reduced() || ms <= 0) { onFrame(1); resolveFn(); return { done, cancel() {} }; }
+    const t0 = performance.now();
+    const loop = now => {
+      if (dead) return;
+      const p = clamp((now - t0) / ms, 0, 1);
+      onFrame(easeOut(p));
+      if (p < 1) rid = requestAnimationFrame(loop); else resolveFn();
+    };
+    rid = requestAnimationFrame(loop);
+    return { done, cancel() { dead = true; cancelAnimationFrame(rid); resolveFn(); } };
+  }
+  function endDemo() {
+    T.demoHold = false;
+    if (T.pendingUsage) { const p = T.pendingUsage; T.pendingUsage = null; _renderUsage(p.r); }
+  }
+
+  // Step 4: ring drains to 60% used with a counting number, then the real values come back.
+  function fxRingDemo() {
+    const wrap = q('#uqRingWrap'), content = q('#uqContent');
+    if (!wrap) return { done: Promise.resolve(), stop() {}, chip: false };
+    const snap = wrap.innerHTML;
+    const color = ((content && getComputedStyle(content).getPropertyValue('--glow')) || '').trim() || '#2ecc71';
+    const QUOTA = 10, USED = 6;
+    T.demoHold = true;
+    const draw = p => {
+      const used = rnd(USED * p);
+      wrap.innerHTML = `${usageRingSvg(100 - (USED * p / QUOTA) * 100, color)}<div class="uqCenter"><div class="uqNum" style="color:${color}">${fmtGb(used)}<small>GB</small></div><div class="uqSub">${fmtGb(rnd(QUOTA - USED * p))} GB / ${QUOTA} GB</div></div>`;
+    };
+    draw(0);
+    const c = runCount(1600, draw);
+    return { done: c.done, chip: true, stop() { c.cancel(); wrap.innerHTML = snap; endDemo(); } };
+  }
+  // Step 11: queue / uploaded counters count up (real numbers; example numbers if they are all still zero).
+  function fxCountersDemo() {
+    const keys = (typeof USAGE_VIDEO_TYPES !== 'undefined' ? USAGE_VIDEO_TYPES : []).map(x => x.key);
+    const qs = keys.map(k => q('#uqQ_' + k)), us = keys.map(k => q('#uqU_' + k));
+    if (!keys.length || qs.concat(us).some(e => !e)) return { done: Promise.resolve(), stop() {}, chip: false };
+    const snapQ = qs.map(e => e.textContent), snapU = us.map(e => e.textContent);
+    const realQ = snapQ.map(Number).map(v => v || 0), realU = snapU.map(Number).map(v => v || 0);
+    const example = realQ.concat(realU).every(v => !v);
+    const EX = { VGD: [3, 24], VID: [1, 9], MP3: [2, 12], SEQ: [2, 7], CAP: [1, 5] };
+    const tq = keys.map((k, i) => (example ? (EX[k] || [1, 5])[0] : realQ[i])), tu = keys.map((k, i) => (example ? (EX[k] || [1, 5])[1] : realU[i]));
+    T.demoHold = true;
+    const draw = p => { keys.forEach((k, i) => { qs[i].textContent = Math.round(tq[i] * p); us[i].textContent = Math.round(tu[i] * p); }); };
+    draw(0);
+    const c = runCount(1300, draw);
+    return { done: c.done, chip: example, stop() { c.cancel(); qs.forEach((e, i) => { e.textContent = snapQ[i]; }); us.forEach((e, i) => { e.textContent = snapU[i]; }); endDemo(); } };
+  }
+  // Step 12: lifetime GB and per-tool counts count up (same rule).
+  function fxLifeDemo() {
+    const gbEl = q('#uqLifeGb'), rows = Array.from(document.querySelectorAll('#uqLifeRows tr'));
+    if (!gbEl || !rows.length) return { done: Promise.resolve(), stop() {}, chip: false };
+    const snapGb = gbEl.innerHTML, cells = rows.map(r => r.lastElementChild), snapC = cells.map(c => c.textContent);
+    const realGb = parseFloat(gbEl.textContent) || 0, realC = snapC.map(Number).map(v => v || 0);
+    const example = !realGb && realC.every(v => !v);
+    const EXC = [24, 9, 12, 7, 5];
+    const body = rows.length - 1; // last row is the total
+    const tc = realC.map((v, i) => (example ? (i < body ? (EXC[i] || 3) : 0) : v));
+    if (example) tc[body] = tc.slice(0, body).reduce((a, b) => a + b, 0);
+    const tg_ = example ? 18.4 : realGb;
+    T.demoHold = true;
+    const draw = p => { gbEl.innerHTML = `${fmtGb(rnd(tg_ * p))}<small>GB</small>`; cells.forEach((c, i) => { c.textContent = Math.round(tc[i] * p); }); };
+    draw(0);
+    const c = runCount(1400, draw);
+    return { done: c.done, chip: example, stop() { c.cancel(); gbEl.innerHTML = snapGb; cells.forEach((e, i) => { e.textContent = snapC[i]; }); endDemo(); } };
+  }
+  const FX = { ringDemo: fxRingDemo, countersDemo: fxCountersDemo, lifeDemo: fxLifeDemo };
+  function stopFx() {
+    if (T.fx) { const f = T.fx; T.fx = null; try { f.stop(); } catch (e) { /* ignore */ } }
+    T.fxChip = false;
+    if (chipEl) chipEl.classList.remove('on');
+  }
+
+  // ---------------------------------------------------------------- Part 2 helpers: popup state, waits
+  const isOpen = id => { const e = document.getElementById(id); return !!(e && !e.classList.contains('hidden')); };
+  // Put Settings / the Add-folder popup into the state a step needs. Uses the app's own functions and buttons,
+  // so nothing is duplicated. T.applying keeps our own synthetic clicks from being mistaken for the user's taps.
+  function applyUi(step) {
+    const ui = step.ui || {};
+    T.applying = true;
+    try {
+      if (!ui.add && isOpen('addFolderOverlay')) closeAddFolderModal();
+      if (!ui.settings) { if (isOpen('settingsOverlay')) closeSettings(); return; }
+      if (!isOpen('settingsOverlay')) openSettings();
+      if (ui.tab) {
+        const want = document.getElementById(ui.tab === 'app' ? 'settingsTabApp' : 'settingsTabUser');
+        if (want && !want.classList.contains('active')) want.click();
+      }
+      const body = q('#settingsOverlay .help-body'); if (body) body.scrollTop = 0;
+      if (ui.add && !isOpen('addFolderOverlay')) { const b = document.getElementById('openAddFolderBtn'); if (b) b.click(); }
+    } finally { T.applying = false; }
+  }
+  function closeTourPopups() {
+    T.applying = true;
+    try {
+      if (isOpen('addFolderOverlay')) closeAddFolderModal();
+      if (isOpen('settingsOverlay')) closeSettings();
+    } finally { T.applying = false; }
+  }
+  function clearWatch() {
+    clearTimeout(T.tapTimer); T.tapTimer = 0;
+    clearInterval(T.watch); T.watch = 0;
+  }
+  const safe = (fn, a) => { try { return !!fn(a); } catch (e) { return false; } };
+  async function waitUntil(fn, ms, alive) {
+    const t0 = performance.now();
+    while (alive() && performance.now() - t0 < ms) {
+      if (safe(fn, T)) return true;
+      await sleep(120);
+    }
+    return alive() ? safe(fn, T) : false;
+  }
+  // After a real tap on a "tap" step that has an `until` condition: wait for the effect, with a timeout fallback.
+  function awaitTap(step, token) {
+    clearTimeout(T.tapTimer);
+    if (step.tapOk && !safe(step.tapOk, T)) return;      // the tap did nothing (e.g. a blocked button)
+    const limit = step.timeout || 1500, t0 = performance.now();
+    const poll = () => {
+      if (!T.active || token !== T.token) return;
+      // A tap can land while the step's own entry animation is still running (Next is not unlocked yet):
+      // keep polling until the step has settled instead of dropping the advance.
+      if (safe(step.until, T)) { if (T.canNext && !T.confirming) { next(); return; } }
+      else if (step.abort && safe(step.abort, T)) return;   // e.g. the add failed and an error is showing: stay here
+      else if (performance.now() - t0 > limit && T.canNext && !T.confirming) { next(); return; } // fallback: the next step re-applies its own popup state
+      T.tapTimer = setTimeout(poll, 60);
+    };
+    T.tapTimer = setTimeout(poll, 0);
+  }
+  // "type" steps: the person is filling in a field. Move on once the condition has held for ~0.75 s.
+  function startTypeWatch(step, token) {
+    clearInterval(T.watch);
+    let hold = 0;
+    T.watch = setInterval(() => {
+      if (!T.active || token !== T.token) { clearInterval(T.watch); T.watch = 0; return; }
+      if (T.confirming) { hold = 0; return; }
+      hold = safe(step.until, T) ? hold + 1 : 0;
+      if (hold >= 3) { clearInterval(T.watch); T.watch = 0; next(); }
+    }, 250);
+  }
+
+  // ---------------------------------------------------------------- stepping
+  async function settle(token) {
+    const wrap = q('#uqWrap'), t0 = performance.now();
+    const waiting = () => !!(wrap && wrap.classList.contains('busy'));
+    if (waiting()) {
+      T.syncing = true; renderNext();
+      placeCard(false); card.classList.remove('swap'); T.cardShown = true;
+      while (waiting() && performance.now() - t0 < 8000) {
+        await sleep(150);
+        if (!T.active || token !== T.token) return false;
+      }
+      T.syncing = false;
+      await sleep(260); // the dashboard fades back in
+      if (!T.active || token !== T.token) return false;
+    }
+    if (document.fonts && document.fonts.ready) await Promise.race([document.fonts.ready, sleep(600)]);
+    await frames(2);
+    return T.active && token === T.token;
+  }
+  async function stableRects(els, alive) {
+    let prev = '';
+    for (let i = 0; i < 12; i++) {
+      const s = els.map(e => { const r = e.getBoundingClientRect(); return r.left.toFixed(1) + ',' + r.top.toFixed(1) + ',' + r.width.toFixed(1); }).join('|');
+      if (s === prev) return;
+      prev = s;
+      await raf();
+      if (!alive()) return;
+    }
+  }
+
+  async function show(idx) {
+    const token = ++T.token, step = STEPS[idx];
+    const alive = () => T.active && token === T.token;
+    stopFx(); clearWatch();
+    T.idx = idx; T.step = step; T.canNext = false; T.moving = true; T.syncing = false;
+    root.classList.toggle('tapMode', (step.mode === 'tap' || step.mode === 'type') && CLIP_OK);
+    if (T.confirming) setConfirm(false);
+    saveProgress({ id: step.id, i: idx });
+    applyUi(step);                                 // synchronous, so a tap on Next still counts as a user gesture (keyboard can open)
+    if (step.enter) safe(step.enter, T);
+    haptic(step.level === 'important' ? 'important' : step.level === 'tap' ? 'tap' : 'select');
+
+    if (T.cardShown) { card.classList.add('swap'); await sleep(reduced() ? 0 : 130); if (!alive()) return; }
+    renderCard(step, idx);
+
+    if (step.needsData) { if (!(await settle(token))) return; } else { await frames(2); if (!alive()) return; }
+
+    const els = resolveTargets(step);
+    T.els = els;
+    T.typeBase = (step.mode === 'type' && els[0] && typeof els[0].value === 'string') ? els[0].value.trim() : '';
+    await stableRects(els, alive); if (!alive()) return;
+    card.style.maxHeight = '';
+    const d = els.length ? fitScroll(els, card.offsetHeight, !!step.fx) : 0;
+    const app = appEl(), s0 = app ? app.scrollTop : 0, scrolled = Math.abs(d) > 1;
+    const measure = () => holesFromEls(els, step.shape);
+    const onTo = to => {
+      T.target = to;
+      placeCard(T.cardShown && !card.classList.contains('swap'));
+      card.classList.remove('swap');
+      T.cardShown = true;
+    };
+    await transitionTo(measure, scrolled ? () => { app.scrollTop = s0 + d; } : null, !!step.wave && els.length > 1, alive, onTo);
+    if (!alive()) return;
+    T.moving = false;
+    tick(true);
+
+    if (step.fx && FX[step.fx]) {
+      const fx = FX[step.fx]();
+      T.fx = fx; T.fxChip = !!fx.chip;
+      chipEl.textContent = t('ui.example');
+      chipEl.classList.toggle('on', !!fx.chip);
+      paint();
+      placeCard(false);
+      await fx.done;
+      if (!alive()) return;
+    }
+    if (step.mode === 'wait' && step.until && !step.fx) {   // Part 2 wait step: Next unlocks when the condition holds (or on timeout)
+      await waitUntil(step.until, step.timeout || 8000, alive);
+      if (!alive()) return;
+    }
+    T.canNext = true;
+    renderNext();
+    if (step.mode === 'type' && step.until) startTypeWatch(step, token);
+    try { if (!T.confirming && step.mode !== 'type') btnNext.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
+  }
+
+  function next() {
+    if (!T.active || !T.canNext || T.confirming) return;
+    if (T.idx >= STEPS.length - 1) { end('done'); return; }
+    T.hist.push(T.idx);
+    show(T.idx + 1);
+  }
+  // Jump to a step by id (the "I'll do this later" link). Back returns to where we were.
+  function jump(id) {
+    const j = STEPS.findIndex(s => s.id === id);
+    if (!T.active || T.confirming || j < 0) return;
+    T.hist.push(T.idx);
+    show(j);
+  }
+  function back() {
+    if (!T.active) return;
+    if (T.confirming) { setConfirm(false); return; }
+    if (T.idx <= 0) { setConfirm(true); return; }
+    if (T.hist.length) { show(T.hist.pop()); return; }          // retrace exactly the way we came
+    let j = T.idx - 1;                                           // resumed mid-tour: previous main step
+    while (j > 0 && STEPS[j].branch) j--;
+    show(j);
+  }
+
+  // Re-measure the cut-outs (layout shifts, font loads, resizes, keyboard) and re-place the card.
+  function tick(force) {
+    if (!T.active || !root) return;
+    if (!isHome()) { end('aborted'); return; }
+    if (T.moving && !force) return;
+    const r = root.getBoundingClientRect();
+    const sized = r.width !== T.vw || r.height !== T.vh;
+    if (sized) { T.vw = r.width; T.vh = r.height; }
+    if (!T.els.length) { if (sized || force) { T.view = []; paint(); placeCard(false); } return; }
+    updateNote();
+    const els = T.els.filter(e => document.contains(e) && isVisible(e));
+    if (!els.length && T.step.until) return;   // the target is going away because the step's effect happened (popup closing)
+    const to = holesFromEls(els, T.step.shape);
+    if (sized || force || !sameHoles(to, T.target)) {
+      T.target = to; T.view = to.map(h => Object.assign({}, h)); paint(); placeCard(false);
+    }
+  }
+  function onResize() {
+    clearTimeout(T.resizeTimer);
+    T.resizeTimer = setTimeout(() => {
+      if (!T.active || T.moving) return;
+      const r = root.getBoundingClientRect(); T.vw = r.width; T.vh = r.height;
+      const app = appEl();
+      if (app && T.els.length) { card.style.maxHeight = ''; const d = fitScroll(T.els.filter(isVisible), card.offsetHeight, !!(T.step && T.step.fx)); if (Math.abs(d) > 1) app.scrollTop += d; }
+      tick(true);
+    }, 60);
+  }
+  function onKey(e) {
+    if (!T.active) return;
+    if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;   // typing in the link field
+    if (e.key === 'Escape' || e.key === 'ArrowLeft') { e.preventDefault(); back(); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); next(); }
+  }
+  function onDocClick(e) {
+    if (!T.active || !T.step || T.applying || T.step.mode !== 'tap' || e.target.closest('.tutRoot')) return;
+    if (!T.els.some(el => el.contains(e.target))) return;
+    const tok = T.token, st = T.step;
+    if (st.until) { awaitTap(st, tok); return; }                 // Part 2: wait for the real effect, with a timeout fallback
+    setTimeout(() => { if (T.active && tok === T.token) next(); }, 0);
+  }
+  function onShieldClick(e) {
+    // Fallback (no clip-path): taps on "tap" / "type" steps are forwarded to the real control.
+    if (CLIP_OK || !T.step || (T.step.mode !== 'tap' && T.step.mode !== 'type') || !T.els.length) return;
+    const u = unionOf(T.target);
+    if (u && e.clientX >= u.left && e.clientX <= u.right && e.clientY >= u.top && e.clientY <= u.bottom) {
+      if (T.step.mode === 'type') { try { T.els[0].focus(); } catch (x) { /* ignore */ } }
+      T.els[0].click();
+    }
+  }
+  function stopTouch(e) { if (!e.target.closest || !e.target.closest('.tutBody')) e.preventDefault(); }
+
+  // ---------------------------------------------------------------- mount / start / end
+  function mount() {
+    root = document.createElement('div');
+    root.className = 'tutRoot' + (CLIP_OK ? '' : ' noClip');
+    root.setAttribute('data-level', 'info');
+    root.dir = RTL_LANGS.includes(lang()) ? 'rtl' : 'ltr';
+    root.innerHTML =
+      '<div class="tutShield"></div><div class="tutDim"></div><div class="tutBoxFb"></div><div class="tutHls"></div><div class="tutChip"></div>' +
+      '<div class="tutCard swap" role="dialog" aria-modal="true" aria-live="polite"><div class="tutCaret"></div>' +
+        '<div class="tutMain">' +
+          '<div class="tutHead"><span class="tutLevel"></span><button type="button" class="tutBtn tutSkip"></button></div>' +
+          '<div class="tutBody"><div class="tutTitle"></div><div class="tutText"></div><div class="tutHow"></div><div class="tutTip"></div><div class="tutNote"></div></div>' +
+          '<button type="button" class="tutBtn tutLater"></button>' +
+          '<div class="tutDots"></div>' +
+          '<div class="tutFoot"><button type="button" class="tutBtn ghost tutBack"></button><button type="button" class="tutBtn primary tutNext"></button></div>' +
+        '</div>' +
+        '<div class="tutConfirm"><div class="tutBody"><div class="tutTitle tutCTitle"></div><div class="tutText tutCText"></div></div>' +
+          '<div class="tutFoot"><button type="button" class="tutBtn ghost tutKeep"></button><button type="button" class="tutBtn primary tutSkipYes"></button></div>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(root);
+    dim = q('.tutDim', root); boxFb = q('.tutBoxFb', root); hlLayer = q('.tutHls', root); chipEl = q('.tutChip', root); card = q('.tutCard', root);
+    elLevel = q('.tutLevel', root); elTitle = q('.tutMain .tutTitle', root); elText = q('.tutMain .tutText', root); elDots = q('.tutDots', root);
+    btnBack = q('.tutBack', root); btnNext = q('.tutNext', root); btnSkip = q('.tutSkip', root);
+    elCTitle = q('.tutCTitle', root); elCText = q('.tutCText', root); btnKeep = q('.tutKeep', root); btnSkipYes = q('.tutSkipYes', root);
+    elHow = q('.tutHow', root); elTip = q('.tutTip', root); elNote = q('.tutNote', root); btnLater = q('.tutLater', root);
+    card.setAttribute('aria-label', t('ui.dialog'));
+    btnBack.textContent = t('ui.back'); btnSkip.textContent = t('ui.skip');
+    elDots.innerHTML = STEPS.map(() => '<i></i>').join('');
+    btnNext.onclick = () => { const st = T.step; if (st && st.nextSkip && safe(st.nextSkipIf, T)) jump(st.nextSkip); else next(); }; btnBack.onclick = back;
+    btnSkip.onclick = () => setConfirm(true);
+    btnKeep.onclick = () => setConfirm(false);
+    btnSkipYes.onclick = () => end('skipped');
+    btnLater.onclick = () => { if (T.step && T.step.later) jump(T.step.later); };
+    q('.tutShield', root).addEventListener('click', onShieldClick);
+    root.addEventListener('touchmove', stopTouch, { passive: false });
+    root.addEventListener('wheel', stopTouch, { passive: false });
+    const r = root.getBoundingClientRect(); T.vw = r.width; T.vh = r.height;
+    T.hls = []; T.view = []; T.target = []; T.els = [];
+  }
+
+  function startTutorial(opts) {
+    opts = opts || {};
+    if (!window.TUTORIAL_READY || T.active || !isHome()) return false;
+    if (Array.from(document.querySelectorAll('.help-overlay:not(.hidden)')).some(o => !['helpOverlay', 'settingsOverlay', 'addFolderOverlay'].includes(o.id))) return false;
+    closeOverlay('helpOverlay');
+    let start = 0;
+    const p = loadProgress();
+    if (!opts.restart && p && !p.done && !p.skipped) {
+      const i = STEPS.findIndex(s => s.id === p.id);
+      start = i >= 0 ? i : clamp(p.i || 0, 0, STEPS.length - 1);
+      // Saved inside the "add a folder" branch: resume at its entry step (the popup state can't be trusted after a reopen).
+      while (start > 0 && STEPS[start].branch) start--;
+    }
+    mount();
+    T.active = true; T.cardShown = false; T.confirming = false; T.step = null; T.idx = -1; T.hist = [];
+    const app = appEl(); T.scroll0 = app ? app.scrollTop : 0;
+    document.documentElement.classList.add('tutLock');
+    try { if (tg && typeof tg.disableVerticalSwipes === 'function') tg.disableVerticalSwipes(); } catch (e) { /* ignore */ }
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', onResize);
+    try { if (tg && tg.onEvent) tg.onEvent('viewportChanged', onResize); } catch (e) { /* ignore */ }
+    document.addEventListener('keydown', onKey, true);
+    document.addEventListener('click', onDocClick, true);
+    T.timer = setInterval(() => tick(false), 300);
+    syncBackButton();
+    requestAnimationFrame(() => { if (root) root.classList.add('on'); });
+    show(start);
+    return true;
+  }
+
+  function end(reason) {
+    if (!T.active) return;
+    T.active = false; T.token++; T.moving = false;
+    if (T.anim) T.anim.cancel();
+    stopFx(); clearWatch();
+    clearInterval(T.timer); clearTimeout(T.resizeTimer);
+    window.removeEventListener('resize', onResize);
+    window.removeEventListener('orientationchange', onResize);
+    if (window.visualViewport) window.visualViewport.removeEventListener('resize', onResize);
+    try { if (tg && tg.offEvent) tg.offEvent('viewportChanged', onResize); } catch (e) { /* ignore */ }
+    document.removeEventListener('keydown', onKey, true);
+    document.removeEventListener('click', onDocClick, true);
+    if (reason === 'done') saveProgress({ done: true });
+    else if (reason === 'skipped') saveProgress({ skipped: true });
+    if (reason === 'done') haptic('success');
+    closeTourPopups();   // Settings / Add-folder popups opened by the tour never stay behind
+    const r = root; root = null;
+    if (r) { r.classList.remove('on'); setTimeout(() => { if (r.parentNode) r.parentNode.removeChild(r); }, reduced() ? 0 : 280); }
+    document.documentElement.classList.remove('tutLock');
+    const app = appEl(); if (app) app.scrollTop = T.scroll0;
+    try { if (tg && typeof tg.enableVerticalSwipes === 'function') tg.enableVerticalSwipes(); } catch (e) { /* ignore */ }
+    T.hls = []; T.view = []; T.target = []; T.els = [];
+    syncBackButton();
+    refreshWelcome();
+  }
+
+  // ---------------------------------------------------------------- welcome strip + Help button
+  function refreshWelcome() {
+    const wrap = document.getElementById('tutWelcome'), btn = document.getElementById('welcomeTutorialBtn'), lead = document.getElementById('tutWelcomeText');
+    const p = loadProgress(), fresh = !(p && (p.done || p.skipped));
+    const resume = !!(fresh && p && typeof p.i === 'number' && p.i > 0);
+    if (lead) lead.textContent = t('ui.welcomeLead');
+    if (btn) btn.textContent = resume ? t('ui.welcomeResume', { n: p.i + 1, total: STEPS.length }) : t('ui.welcomeBtn');
+    if (wrap) wrap.classList.toggle('hidden', !fresh || T.active);
+    const rb = document.getElementById('replayTutorialBtn');
+    if (rb) { rb.textContent = t('ui.replay'); rb.classList.toggle('hidden', !isHome()); }
+  }
+
+  // A tap on #welcomeTutorialBtn starts (or resumes) the tour. Delegated, so a button added later works too.
+  document.addEventListener('click', function (e) {
+    const b = e.target.closest && e.target.closest('#welcomeTutorialBtn');
+    if (b) { e.preventDefault(); startTutorial(); }
+  });
+  const replayBtn = document.getElementById('replayTutorialBtn');
+  if (replayBtn) replayBtn.onclick = () => { closeOverlay('helpOverlay'); setTimeout(() => startTutorial({ restart: true }), 60); };
+  const helpFabEl = document.getElementById('helpFab');
+  if (helpFabEl) helpFabEl.addEventListener('click', refreshWelcome);
+
+  // Any other screen switch (forced sign-out, duplicate-tab guard…) ends the tour but keeps its progress.
+  const _showScreenPrev = showScreen;
+  showScreen = function (id) {
+    _showScreenPrev(id);
+    if (T.active && id !== 'screen-home') end('aborted');
+    refreshWelcome();
+  };
+
+  window.CSTutorial = {
+    get active() { return T.active; },
+    start: startTutorial,
+    back: back,
+    next: next,
+    stop: () => end('aborted'),
+    steps: STEPS,
+    setLang: code => { langOverride = code; refreshWelcome(); }
+  };
+  window.startTutorial = startTutorial;
+  window.TUTORIAL_READY = true;
+  refreshWelcome();
+})();
 </script>
 </body>
 </html>
