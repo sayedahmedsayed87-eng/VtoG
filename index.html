@@ -1181,7 +1181,8 @@ const CALL_API_MAX_ATTEMPTS = 3;
 
 // While the tour's practice download is on screen, anything that would change data is refused right here
 // (the submit button is also intercepted earlier, this is the safety net). Reads such as listRootFolders still work.
-const PRACTICE_BLOCKED_ACTIONS = /^(submit|create|add|remove|register|set)/i;
+let accountRecheckBusy = false;
+const PRACTICE_BLOCKED_ACTIONS =/^(submit|create|add|remove|register|set)/i;
 async function callApi(action, params, attempt) {
   if (tutorialPractice && PRACTICE_BLOCKED_ACTIONS.test(String(action))) return { error: 'Practice mode: nothing was sent.' };
   attempt = attempt || 1;
@@ -1195,6 +1196,15 @@ async function callApi(action, params, attempt) {
     throw e; // out of retries — let the caller's existing catch handle it
   }
   if (!result || typeof result !== 'object') throw new Error('Invalid response from server');
+  // The server says this account was deleted or deactivated: drop the cached profile and show the
+  // Welcome / Reactivate popup right away, wherever in the app the person is.
+  if (result.code === 'not_registered' || result.code === 'deactivated') {
+    clearCachedProfile(chatId);
+    if (action !== 'checkUser' && action !== 'registerUser' && !accountRecheckBusy) {
+      accountRecheckBusy = true; // several calls can fail at once; re-check only one time
+      checkRegistration().finally(() => { accountRecheckBusy = false; });
+    }
+  }
   return result;
 }
 
