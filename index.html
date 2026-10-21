@@ -206,6 +206,10 @@ button.back,.cancelText{color:var(--button);background:transparent;border:0;font
 .feedbackInput{display:block;width:100%;min-height:120px;max-height:40vh;resize:none;padding:12px 13px;border-radius:var(--r-ctl);border:1px solid var(--border);background:var(--bg);color:var(--text);font:inherit;font-size:14.5px;line-height:1.5}
 .feedbackInput:focus{outline:2px solid color-mix(in srgb,var(--button) 40%,transparent);outline-offset:1px}
 .feedbackIntro{margin:0 0 12px;color:var(--muted);line-height:1.6;font-size:14px}
+.fbCats{display:flex;gap:8px;margin:0 0 12px}
+button.fbChip{flex:1;width:auto;min-width:0;min-height:0;margin:0;padding:10px 6px;border-radius:var(--r-ctl);font-size:13.5px;font-weight:800;gap:5px;color:var(--text);background:color-mix(in srgb,var(--muted) 10%,transparent);border:1.5px solid transparent}
+button.fbChip.active{background:color-mix(in srgb,var(--button) 14%,transparent);border-color:var(--button);color:var(--button)}
+.fbCool{margin-top:10px;font-size:12.5px;font-weight:700;line-height:1.4;color:var(--warning)}
 .feedbackThanks{text-align:center;padding:18px 6px 8px}
 .feedbackThanks .icon{margin-bottom:12px}
 .help-title{font-size:clamp(18px,5vw,21px);font-weight:850}
@@ -488,11 +492,11 @@ button.tutReplayBtn{margin-top:14px}
 .tutCard.center{text-align:center}
 .tutCard.center .tutHead{display:none}
 .tutCard.center .tutTitle{font-size:19px;margin-top:2px}
-.tutDots{flex:none;display:flex;flex-wrap:wrap;gap:4px;margin-top:12px}
+.tutDots{flex:none;display:flex;flex-wrap:wrap;gap:3px;margin-top:12px}
 .tutCard.center .tutDots{justify-content:center}
-.tutDots i{display:block;width:6px;height:6px;border-radius:99px;background:color-mix(in srgb,var(--muted) 34%,transparent);transition:width .25s,background .25s}
+.tutDots i{display:block;width:5px;height:5px;border-radius:99px;background:color-mix(in srgb,var(--muted) 34%,transparent);transition:width .25s,background .25s}
 .tutDots i.past{background:color-mix(in srgb,var(--c) 52%,transparent)}
-.tutDots i.on{width:16px;background:var(--c)}
+.tutDots i.on{width:14px;background:var(--c)}
 .tutFoot{flex:none;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}
 .tutConfirm .tutFoot{margin-top:14px}
 .tutRoot button.tutBtn{width:auto;min-height:40px;margin:0;padding:9px 18px;border-radius:12px;font-size:14.5px;font-weight:800;gap:7px}
@@ -511,7 +515,20 @@ button.tutReplayBtn{margin-top:14px}
 .tutNote{background:color-mix(in srgb,var(--success) 14%,transparent);color:var(--text)}
 .tutRoot button.tutBtn.tutLater{display:none;flex:none;width:100%;min-height:34px;margin:8px 0 0;padding:6px 8px;background:transparent;color:var(--muted);font-size:13.5px;font-weight:750;text-decoration:underline}
 
+/* Part 3: practice mode (nothing real is created) */
+html.tutPractice .folder-row .newFolderBtn{display:none!important}               /* no real "New Folder" while rehearsing */
+html.tutPractice #folderPickerOverlay{align-items:flex-start;padding-top:max(10px,env(safe-area-inset-top))} /* leaves room for the tip card below */
+html.tutPractice #folderPickerOverlay .help-inner{max-height:min(54vh,400px);max-height:min(54dvh,400px)}
+html.tutPractice #folderPickerOverlay .folder-tree{max-height:none}
+#jobOverlayTitle[data-practice]::after{content:attr(data-practice);margin-inline-start:.35em;font-size:.72em;font-weight:800;color:var(--warning)}
+.tutDemoRow .folder-row{border:1.5px dashed var(--warning);background:color-mix(in srgb,var(--warning) 9%,transparent)}
+.tutDemoRow .folder-row.selected{background:color-mix(in srgb,var(--button) 16%,transparent)}
+/* Finish celebration: the same ripples + tiny emoji as the job-button press, a little bigger, bursting from behind the card */
+.tutCel{position:absolute;width:96px;height:96px;margin:-48px 0 0 -48px;pointer-events:none;--glow:var(--success)}
+.tutCel .satPart{font-size:clamp(14px,4.6vw,21px)}
+
 @media (prefers-reduced-motion:reduce){
+  .tutCel{display:none}
   .tutHlPulse,.tutBadge{animation:none!important}
   .tutComet{display:none}
   .tutCard,.tutDim,.tutChip{transition:none}
@@ -939,7 +956,13 @@ button.tutReplayBtn{margin-top:14px}
     <div class="help-body">
       <div id="feedbackForm">
         <p class="feedbackIntro">Hi there! 👋 We're always working to make Clip Sense better for you. Got an idea, a suggestion, or something that felt off? Tell us — every message is read with care. 💛</p>
+        <div class="fbCats" id="feedbackCats" role="radiogroup" aria-label="Message type">
+          <button type="button" class="fbChip" data-cat="Idea" role="radio" aria-checked="false">💡 Idea</button>
+          <button type="button" class="fbChip" data-cat="Problem" role="radio" aria-checked="false">⚠️ Problem</button>
+          <button type="button" class="fbChip" data-cat="Compliment" role="radio" aria-checked="false">💛 Compliment</button>
+        </div>
         <textarea id="feedback-input" class="feedbackInput" maxlength="500" dir="auto" placeholder="Type your suggestion or feedback here…"></textarea>
+        <div id="feedback-cooldown" class="fbCool hidden" aria-live="polite"></div>
         <div id="feedback-error" class="error-text hidden"></div>
       </div>
       <div id="feedbackThanks" class="feedbackThanks hidden">
@@ -969,6 +992,7 @@ let pendingFolder = null; // { label, driveFolderId, path, idPath } — highligh
 let autoFilledName = false; // true only while name-input's value is one WE set — cleared the instant the user types
 let selectedRowEl = null; // the currently highlighted row element inside the folder-picker tree
 let deepLinkMode = 'gdrive'; // which job type the shared link/name/folder form is for when deepLinkScreen is 'screen-app'
+let tutorialPractice = false; // true ONLY while the tour's practice download is on screen: submits are intercepted and nothing real is created or stored
 let deepLinkScreen = null; // set from the ?screen= param when opened via one of the bot's two buttons — consumed once, right after auth, to skip Home and land straight on that screen
 
 // The tree can re-render a branch (background cache refresh, re-expanding a
@@ -1028,6 +1052,7 @@ let userSettings = AppSettings.load();
 
 function rememberedFolderKey_(id) { return 'lastFolder_' + id; }
 function saveRememberedFolder(id, folder) {
+  if (tutorialPractice) return; // practice picks are never remembered
   if (!userSettings.rememberFolder) return;
   try { localStorage.setItem(rememberedFolderKey_(id), JSON.stringify(folder)); } catch (e) { /* best-effort only */ }
 }
@@ -1154,7 +1179,11 @@ function callApiJsonp(action, params) {
 // already-applied result — never a duplicate.
 const CALL_API_MAX_ATTEMPTS = 3;
 
+// While the tour's practice download is on screen, anything that would change data is refused right here
+// (the submit button is also intercepted earlier, this is the safety net). Reads such as listRootFolders still work.
+const PRACTICE_BLOCKED_ACTIONS = /^(submit|create|add|remove|register|set)/i;
 async function callApi(action, params, attempt) {
+  if (tutorialPractice && PRACTICE_BLOCKED_ACTIONS.test(String(action))) return { error: 'Practice mode: nothing was sent.' };
   attempt = attempt || 1;
   let result;
   try {
@@ -1314,13 +1343,9 @@ const FolderCache = (() => {
 //  - BroadcastChannel                 (instant, same condition)
 //  - Telegram DeviceStorage (9.0+) or CloudStorage (6.9+)  (polled; works even
 //    if the WebViews don't share browser storage)
-// Tap the version label in the footer 5 times to see a live diagnostics panel.
-const GUARD_BUILD = 'guard-r5-home';
 const APP_INSTANCE_ID = Math.random().toString(36).slice(2) + '-' + Date.now();
-const ME = APP_INSTANCE_ID.split('-')[0].slice(0, 4);
 const INSTANCE_LOCK_KEY = 'cs_active_instance';
 const TASK_KEY = 'cs_active_task'; // the link currently on-screen in whichever tab currently owns the lock
-const GUARD_LOG_KEY = 'cs_guard_log';
 const INSTANCE_LOCAL_POLL_MS = 1000;
 const INSTANCE_STORE_POLL_MS = 3000;
 let instanceStartedAt = Date.now();
@@ -1338,8 +1363,6 @@ let guardBc = null;
 // conflict screen itself instead of the link we're trying to protect.
 let conflictShown = false;
 let conflictScreenId = null;
-const seenPeers = {};
-const guardDbg = { lastLocal: '-', lastStore: '-', bc: 'no' };
 
 const sharedStore = (function () {
   if (!tg || typeof tg.isVersionAtLeast !== 'function') return null;
@@ -1353,25 +1376,11 @@ const sharedStore = (function () {
 // device fingerprint so opening the app on a laptop never closes the phone.
 const DEVICE_FP = [navigator.userAgent, screen.width + 'x' + screen.height, (tg && tg.platform) || ''].join('|');
 
-// Small log shared through localStorage so ONE screen can show what every tab did.
-function guardLog(msg) {
-  try {
-    const arr = JSON.parse(localStorage.getItem(GUARD_LOG_KEY) || '[]');
-    arr.push([Date.now(), ME, msg]);
-    while (arr.length > 40) arr.shift();
-    localStorage.setItem(GUARD_LOG_KEY, JSON.stringify(arr));
-  } catch (e) {}
-}
-function shortId(id) { return String(id).split('-')[0].slice(0, 4); }
 function parseInstanceLock(raw) {
   try {
     const l = JSON.parse(raw || 'null');
     return (l && l.id && l.ts) ? l : null;
   } catch (e) { return null; }
-}
-function describeLock(l) {
-  if (!l) return 'invalid';
-  return (l.id === APP_INSTANCE_ID ? 'me' : shortId(l.id)) + ' ' + Math.round((Date.now() - l.ts) / 1000) + 's ago';
 }
 function isNewerInstance(lock, source) {
   if (!lock || lock.id === APP_INSTANCE_ID) return false;
@@ -1380,12 +1389,7 @@ function isNewerInstance(lock, source) {
 }
 function handleLock(lock, source) {
   if (!lock || lock.id === APP_INSTANCE_ID) return;
-  const k = lock.id + '@' + lock.ts + '@' + source;
-  if (!seenPeers[k]) {
-    seenPeers[k] = 1;
-    guardLog('saw ' + shortId(lock.id) + ' via ' + source + (isNewerInstance(lock, source) ? ' (newer)' : ' (older)'));
-  }
-  if (isNewerInstance(lock, source)) retireThisInstance('newer ' + shortId(lock.id) + ' via ' + source);
+  if (isNewerInstance(lock, source)) retireThisInstance('newer instance via ' + source);
 }
 
 // ---- Task tracking: what link is this tab currently showing? ----
@@ -1408,7 +1412,7 @@ function currentTaskLink() {
     const activeScreen = document.querySelector('.screen.active');
     screenId = activeScreen ? activeScreen.id : null;
   }
-  return { screen: screenId, link: normalizeLink(val) };
+  return { screen: screenId, link: tutorialPractice ? '' : normalizeLink(val) }; // the practice sample link is never published to the duplicate-tab guard
 }
 function publishCurrentTaskIfActive() {
   if (isStale) return; // a stale/backgrounded tab is never the source of truth
@@ -1445,21 +1449,15 @@ function claimInstanceLock() {
   if (closeRetryTimer) { clearInterval(closeRetryTimer); closeRetryTimer = null; }
   const payload = { id: APP_INSTANCE_ID, ts: instanceStartedAt, dev: DEVICE_FP };
   const value = JSON.stringify(payload);
-  try { localStorage.setItem(INSTANCE_LOCK_KEY, value); } catch (e) { guardLog('localStorage write failed'); }
+  try { localStorage.setItem(INSTANCE_LOCK_KEY, value); } catch (e) {}
   if (guardBc) { try { guardBc.postMessage(payload); } catch (e) {} }
   if (sharedStore) {
     try {
-      sharedStore.s.setItem(INSTANCE_LOCK_KEY, value, function (err) {
-        if (err) guardLog(sharedStore.name + ' write error: ' + err);
-      });
-    } catch (e) { guardLog(sharedStore.name + ' write threw'); }
+      sharedStore.s.setItem(INSTANCE_LOCK_KEY, value, function () {});
+    } catch (e) {}
   }
-  const screenParam = new URLSearchParams(window.location.search).get('screen');
-  guardLog('launched, screen=' + (screenParam || 'none'));
 }
 function attemptClose(reason) {
-  const activeNote = tg ? (' (active=' + tg.isActive + ')') : '';
-  guardLog('closing' + activeNote + ': ' + reason);
   if (tg && typeof tg.close === 'function') {
     tg.close();
     // Still here a moment later? Then close() didn't take — don't leave a live duplicate on screen.
@@ -1467,7 +1465,6 @@ function attemptClose(reason) {
     // close() the instant this tab is actually brought to the foreground,
     // which is when close() has a real chance of taking effect.
     setTimeout(function () {
-      guardLog('close() did not close this tab' + (tg ? (' (active=' + tg.isActive + ')') : ''));
       showScreen('screen-duplicate');
     }, 900);
   } else {
@@ -1504,7 +1501,6 @@ function decideAndMaybeClose(reason) {
     } else {
       conflictShown = true;
       conflictScreenId = mine.screen;
-      guardLog('kept open (' + reason + '): unfinished ' + mine.link.slice(0, 40));
       renderConflictScreen(mine.link);
       showScreen('screen-conflict');
     }
@@ -1519,7 +1515,6 @@ function renderConflictScreen(link) {
 // duplicate-tab case above, there's no background-view restriction to fight
 // here, so no retry loop is needed).
 function closeAppAfterSuccess() {
-  guardLog('closing: job submitted successfully');
   if (tg && typeof tg.close === 'function') tg.close();
 }
 function checkLocalForNewerInstance() {
@@ -1527,7 +1522,6 @@ function checkLocalForNewerInstance() {
   let raw = null;
   try { raw = localStorage.getItem(INSTANCE_LOCK_KEY); } catch (e) {}
   const lock = parseInstanceLock(raw);
-  guardDbg.lastLocal = raw ? describeLock(lock) : 'empty';
   handleLock(lock, 'localStorage');
 }
 function checkStoreForNewerInstance() {
@@ -1535,10 +1529,9 @@ function checkStoreForNewerInstance() {
   try {
     sharedStore.s.getItem(INSTANCE_LOCK_KEY, function (err, value) {
       const lock = parseInstanceLock(value);
-      guardDbg.lastStore = err ? ('error: ' + err) : (value ? describeLock(lock) : 'empty');
       if (!err) handleLock(lock, sharedStore.name);
     });
-  } catch (e) { guardDbg.lastStore = 'threw'; }
+  } catch (e) {}
 }
 function checkForNewerInstance() {
   checkLocalForNewerInstance();
@@ -1554,7 +1547,6 @@ function startInstanceWatch() {
 try {
   if ('BroadcastChannel' in window) {
     guardBc = new BroadcastChannel('cs_instance');
-    guardDbg.bc = 'yes';
     guardBc.onmessage = function (e) {
       const d = e.data;
       if (d && d.task) return; // task updates are read on-demand via readNewestTask, not pushed
@@ -1581,58 +1573,6 @@ window.addEventListener('focus', onResume);
 if (tg && typeof tg.onEvent === 'function') {
   try { tg.onEvent('activated', onResume); } catch (e) {}
 }
-
-// ---- Diagnostics panel (tap the footer version label 5 times) ----
-function renderGuardDebug() {
-  const box = document.getElementById('guardDebug');
-  if (!box) return;
-  let log = [];
-  try { log = JSON.parse(localStorage.getItem(GUARD_LOG_KEY) || '[]'); } catch (e) {}
-  const t = (ts) => new Date(ts).toTimeString().slice(0, 8);
-  const mine = currentTaskLink();
-  let newestRaw = null;
-  try { newestRaw = localStorage.getItem(TASK_KEY); } catch (e) {}
-  const newest = parseTaskPayload(newestRaw);
-  const lines = [
-    'build ' + GUARD_BUILD + '  me=' + ME,
-    'tg ' + (tg ? (tg.version + ' ' + tg.platform + ' active=' + tg.isActive) : 'none'),
-    'store=' + (sharedStore ? sharedStore.name : 'none') + '  broadcast=' + guardDbg.bc,
-    'local lock: ' + guardDbg.lastLocal,
-    'store lock: ' + guardDbg.lastStore,
-    'my task: ' + (mine.link ? (mine.screen + ' → ' + mine.link.slice(0, 30)) : 'none'),
-    'newest task: ' + (newest ? (shortId(newest.owner) + ' ' + newest.screen + ' → ' + (newest.link ? newest.link.slice(0, 30) : 'none')) : 'unknown'),
-    '--- log (shared by all tabs) ---'
-  ].concat(log.slice(-18).map(r => t(r[0]) + ' ' + r[1] + ' ' + r[2]));
-  box.querySelector('pre').textContent = lines.join('\n');
-}
-function toggleGuardDebug() {
-  let box = document.getElementById('guardDebug');
-  if (box) { box.remove(); return; }
-  box = document.createElement('div');
-  box.id = 'guardDebug';
-  box.style.cssText = 'position:fixed;left:8px;right:8px;top:64px;z-index:99999;background:rgba(0,0,0,.92);color:#9f9;' +
-    'font:11px/1.35 monospace;padding:10px;border-radius:10px;max-height:60vh;overflow:auto;';
-  box.innerHTML = '<pre style="margin:0;white-space:pre-wrap;word-break:break-all"></pre>' +
-    '<div style="margin-top:8px;display:flex;gap:8px">' +
-    '<button type="button" id="guardDbgClear" style="flex:1;padding:6px">Clear log</button>' +
-    '<button type="button" id="guardDbgHide" style="flex:1;padding:6px">Hide</button></div>';
-  document.body.appendChild(box);
-  document.getElementById('guardDbgClear').onclick = () => { try { localStorage.removeItem(GUARD_LOG_KEY); } catch (e) {} renderGuardDebug(); };
-  document.getElementById('guardDbgHide').onclick = () => box.remove();
-  renderGuardDebug();
-  const refresh = setInterval(() => { if (!document.getElementById('guardDebug')) clearInterval(refresh); else renderGuardDebug(); }, 1000);
-}
-(function () {
-  let taps = 0, timer = null;
-  const el = document.getElementById('footerVersion');
-  if (!el) return;
-  el.addEventListener('click', () => {
-    taps++;
-    clearTimeout(timer);
-    timer = setTimeout(() => { taps = 0; }, 3000);
-    if (taps >= 5) { taps = 0; toggleGuardDebug(); }
-  });
-})();
 
 // Every screen switch by whichever tab currently owns the lock re-publishes
 // its task, so a stale tab checking in always compares against fresh state.
@@ -1669,8 +1609,6 @@ document.getElementById('conflictKeepBtn').onclick = () => {
 };
 
 window.addEventListener('DOMContentLoaded', () => {
-  const v = document.getElementById('footerVersion');
-  if (v) v.textContent += ' · ' + GUARD_BUILD; // lets you see at a glance which build is actually loaded
   claimInstanceLock();   // this launch is now the newest; older tabs will close themselves
   startInstanceWatch();
   init();
@@ -1738,6 +1676,7 @@ async function verifyRegistrationInBackground() {
     return;
   }
   if (isErrorResult(result)) return;
+  noteTutorialFlag(result);
 
   if (result.registered && !isDeactivated(result)) {
     if (result.username !== currentUsername) {
@@ -1768,6 +1707,7 @@ async function checkRegistration() {
     return showLoadError('No connection.');
   }
   if (result.error) return showLoadError(result.error);
+  noteTutorialFlag(result);
 
   if (result.registered && !isDeactivated(result)) {
     currentUsername = result.username;
@@ -1866,6 +1806,7 @@ function showWelcome(deactivated, username) {
   acc.textContent = welcomeUsername ? (deactivated ? 'Account: @' : 'Your account will be set up as @') + welcomeUsername : '';
   acc.classList.toggle('hidden', !welcomeUsername);
   document.getElementById('welcomeNote').classList.add('hidden');
+  document.getElementById('welcomeOverlayTourBtn').classList.toggle('hidden', tutorialIsDone()); // already did the tour: Replay lives in Help
   clearError('welcome-error');
 
   document.querySelectorAll('.help-overlay').forEach(o => o.classList.add('hidden')); // nothing else open behind it
@@ -2484,6 +2425,7 @@ async function loadFolderTree(forceReload) {
     container.innerHTML = '';
     if (!folders.length) {
       container.innerHTML = '<div class="emptyNote">No folders yet — add one in ⚙️ Settings.</div>';
+      appendPracticeDemoFolder(container); // practice only: lets people with no folders finish the lesson
       return;
     }
     folders.forEach(f => container.appendChild(buildFolderRow(f, [], [])));
@@ -2496,7 +2438,19 @@ async function loadFolderTree(forceReload) {
     if (shown) return; // a background refresh failed, but the cached list is still on screen
     container.innerHTML = '';
     container.appendChild(buildRetryNote(folderLoadErrorText_(e), () => loadFolderTree(forceReload)));
+    appendPracticeDemoFolder(container); // practice only: offline / failed load must not trap the lesson
   }
+}
+
+// Practice only: a clearly labelled stand-in folder. It is drawn into the tree but never cached, never sent anywhere.
+const PRACTICE_DEMO_FOLDER_ID = 'tutorial-demo-folder';
+function appendPracticeDemoFolder(container) {
+  if (!tutorialPractice || container.querySelector('.tutDemoRow')) return;
+  const label = (window.CSTutorial && window.CSTutorial.text) ? window.CSTutorial.text('ui.demoFolderName') : 'Demo folder (practice only)';
+  const wrap = buildFolderRow({ label, driveFolderId: PRACTICE_DEMO_FOLDER_ID, childCount: 0, writable: true }, [], []);
+  wrap.classList.add('tutDemoRow');
+  container.appendChild(wrap);
+  syncPickerConfirm();
 }
 
 // Message for a failed folder-list load: a server-side error is shown as-is
@@ -3320,6 +3274,9 @@ document.getElementById('download-btn').onclick = async () => {
     return;
   }
 
+  // Tour practice: no API call, no job, no quota, nothing stored. Just the usual popup with practice-safe text.
+  if (tutorialPractice) { if (window.CSTutorial) window.CSTutorial.practiceSubmit(); return; }
+
   const btn = document.getElementById('download-btn');
   setButtonLoading(btn, true, 'Adding to queue…');
 
@@ -3351,6 +3308,7 @@ document.getElementById('download-btn').onclick = async () => {
 };
 
 document.getElementById('queuedCloseBtn').onclick = () => {
+  if (tutorialPractice) { closeOverlay('queuedOverlay'); return; } // practice: never touch the form or close the app
   closeOverlay('queuedOverlay');
   clearAllFields(); // in case close() doesn't fire, leave the form ready anyway
   closeJobPopup();  // ...and land back on Home
@@ -3375,9 +3333,9 @@ document.getElementById('clearAllBtn').onclick = clearAllFields;
 // ---- Help overlay ----
 const HELP_CONTENT = [
   { q: 'How do I download a video?', a: 'Paste a Facebook, Instagram, YouTube or X (Twitter) link, give it a name, choose a destination folder, then tap Download. You can also start this from the Telegram bot by sharing a link directly.' },
-  { q: 'Why is the Download button greyed out?', a: 'All three fields — the link, the name, and the destination folder — need to be filled in before the button unlocks.' },
+  { q: 'Why does the Download button look faded?', a: 'All three fields — the link, the name, and the destination folder — need to be filled in first. Tap the button anyway and the missing fields will flash red.' },
   { q: 'How do I add a Drive folder?', a: 'Tap the ⚙️ gear at the top right to open Settings, paste a Google Drive folder share link, then tap Add folder. Its name is pulled straight from Drive, and it will then show up when choosing a destination.' },
-  { q: 'How do I remove a folder?', a: 'Open Settings (the ⚙️ gear at the top right) and tap Remove next to any folder in your list. This only removes it from this app — it does not delete the folder from Drive.' },
+  { q: 'How do I remove a folder?', a: 'Open Settings (the ⚙️ gear at the top right) and tap the 🗑️ icon next to any folder in your list. This only removes it from this app — it does not delete the folder from Drive.' },
   { q: 'What happens if I hit my quota?', a: 'Each account has a download quota that resets on a regular period. If you go over it, new downloads are blocked until the next period starts.' }
 ];
 function renderHelpList() {
@@ -3402,36 +3360,79 @@ document.getElementById('folderPickerOverlay').addEventListener('click', functio
 document.getElementById('helpOverlay').addEventListener('click', function(e){ if (e.target === this) closeOverlay('helpOverlay'); });
 
 // ---- Feedback popup ----
-// Messages are meant to land in the "UsersMessages" sheet tab together with the user's chatId.
-// Until the server action exists, messages are queued on this device (nothing is lost).
-// When the Apps Script action 'submitFeedback' is ready: set FEEDBACK_BACKEND_READY = true.
-const FEEDBACK_BACKEND_READY = false;
-const FEEDBACK_SHEET_TAB = 'UsersMessages';
+// Each message has a category (Idea / Problem / Compliment) and carries the app version (from the footer)
+// so it can be matched to a build when debugging. One message per FEEDBACK_COOLDOWN_SEC: checked here
+// for instant feedback and again on the server (the server's answer wins, so a cleared cache can't bypass it).
+// Saved by the Apps Script action 'submitFeedback' into the UsersMessages sheet.
+const FEEDBACK_COOLDOWN_SEC = 300;
 let feedbackCloseTimer = null;
+let feedbackCooldownTimer = null;
+let feedbackCategory = '';
 
-function feedbackOutboxKey_() { return 'feedback_outbox_' + chatId; }
-function readFeedbackOutbox_() {
-  try { return JSON.parse(localStorage.getItem(feedbackOutboxKey_()) || '[]') || []; } catch (e) { return []; }
+function feedbackLastKey_() { return 'feedback_last_' + chatId; }
+function feedbackLastSent_() {
+  try { return Number(localStorage.getItem(feedbackLastKey_())) || 0; } catch (e) { return 0; }
 }
-function writeFeedbackOutbox_(list) {
-  try { localStorage.setItem(feedbackOutboxKey_(), JSON.stringify(list)); } catch (e) {}
+function setFeedbackLastSent_(ts) {
+  try { localStorage.setItem(feedbackLastKey_(), String(ts)); } catch (e) { /* best-effort only */ }
 }
-async function sendFeedbackItem_(item) {
-  const r = await callApi('submitFeedback', { chatId, message: item.message, sentAt: item.ts, sheet: FEEDBACK_SHEET_TAB });
-  if (isErrorResult(r)) throw new Error(r.error);
+function feedbackCooldownLeft_() {
+  return Math.max(0, Math.ceil((feedbackLastSent_() + FEEDBACK_COOLDOWN_SEC * 1000 - Date.now()) / 1000));
 }
-// Sends anything queued earlier (runs on open when the backend is ready).
-async function flushFeedbackOutbox() {
-  if (!FEEDBACK_BACKEND_READY || !chatId) return;
-  let list = readFeedbackOutbox_();
-  while (list.length) {
-    try { await sendFeedbackItem_(list[0]); } catch (e) { return; }
-    list = readFeedbackOutbox_().slice(1);
-    writeFeedbackOutbox_(list);
-  }
+function feedbackVersion_() {
+  const el = document.getElementById('footerVersion');
+  return el ? el.textContent.trim() : '';
+}
+function fmtCooldown_(sec) {
+  return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
 }
 function updateFeedbackEnabled() {
-  setSoftBlocked(document.getElementById('feedback-send-btn'), !document.getElementById('feedback-input').value.trim());
+  const text = document.getElementById('feedback-input').value.trim();
+  setSoftBlocked(document.getElementById('feedback-send-btn'), !(text && feedbackCategory && feedbackCooldownLeft_() === 0));
+}
+function renderFeedbackCooldown() {
+  const box = document.getElementById('feedback-cooldown');
+  const left = feedbackCooldownLeft_();
+  if (left > 0) {
+    box.textContent = '⏳ You can send another message in ' + fmtCooldown_(left) + '.';
+    box.classList.remove('hidden');
+  } else {
+    box.classList.add('hidden');
+    clearInterval(feedbackCooldownTimer);
+    feedbackCooldownTimer = null;
+  }
+  updateFeedbackEnabled();
+}
+function startFeedbackCooldownTicker() {
+  clearInterval(feedbackCooldownTimer);
+  feedbackCooldownTimer = null;
+  renderFeedbackCooldown();
+  if (feedbackCooldownLeft_() > 0) feedbackCooldownTimer = setInterval(renderFeedbackCooldown, 1000);
+}
+function setFeedbackCategory(cat) {
+  feedbackCategory = cat || '';
+  document.querySelectorAll('#feedbackCats .fbChip').forEach(b => {
+    const on = b.dataset.cat === feedbackCategory;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+  updateFeedbackEnabled();
+}
+document.querySelectorAll('#feedbackCats .fbChip').forEach(b => {
+  b.onclick = () => { clearError('feedback-error'); setFeedbackCategory(b.dataset.cat); };
+});
+
+async function sendFeedbackItem_(item) {
+  const r = await callApi('submitFeedback', { chatId, message: item.message, category: item.category, version: item.version });
+  if (isErrorResult(r)) {
+    const err = new Error(r.error);
+    if (r.cooldown) {
+      err.cooldown = true;
+      // sync the local timer to the server's, so the countdown shows the real time left
+      setFeedbackLastSent_(Date.now() - (FEEDBACK_COOLDOWN_SEC - (Number(r.retryAfterSec) || FEEDBACK_COOLDOWN_SEC)) * 1000);
+    }
+    throw err;
+  }
 }
 function openFeedback() {
   clearTimeout(feedbackCloseTimer);
@@ -3439,11 +3440,13 @@ function openFeedback() {
   document.getElementById('feedbackThanks').classList.add('hidden');
   document.getElementById('feedback-send-btn').classList.remove('hidden');
   clearError('feedback-error');
-  updateFeedbackEnabled();
+  startFeedbackCooldownTicker();
   openOverlay('feedbackOverlay');
 }
 function closeFeedback() {
   clearTimeout(feedbackCloseTimer);
+  clearInterval(feedbackCooldownTimer);
+  feedbackCooldownTimer = null;
   closeOverlay('feedbackOverlay');
 }
 document.getElementById('feedbackFab').onclick = openFeedback;
@@ -3454,27 +3457,24 @@ document.getElementById('feedback-send-btn').onclick = async () => {
   const input = document.getElementById('feedback-input');
   const btn = document.getElementById('feedback-send-btn');
   const message = input.value.trim();
-  if (!message) { flashInvalid(input); return; }
   clearError('feedback-error');
-  const item = { message, ts: Date.now() };
+  if (!message) { flashInvalid(input); return; }
+  if (!feedbackCategory) { flashInvalid(document.getElementById('feedbackCats')); return; }
+  if (feedbackCooldownLeft_() > 0) { flashInvalid(document.getElementById('feedback-cooldown')); return; }
   setButtonLoading(btn, true, 'Sending…');
   try {
-    if (FEEDBACK_BACKEND_READY) {
-      await flushFeedbackOutbox();
-      await sendFeedbackItem_(item);
-    } else {
-      const list = readFeedbackOutbox_();
-      list.push(item);
-      writeFeedbackOutbox_(list);
-    }
+    await sendFeedbackItem_({ message, category: feedbackCategory, version: feedbackVersion_() });
   } catch (e) {
     setButtonLoading(btn, false);
-    showError('feedback-error', 'Couldn\u2019t send your message. Please try again.');
+    if (e && e.cooldown) startFeedbackCooldownTicker();
+    else showError('feedback-error', 'Couldn’t send your message. Please try again.');
+    updateFeedbackEnabled();
     return;
   }
   setButtonLoading(btn, false);
+  setFeedbackLastSent_(Date.now());
   input.value = '';
-  updateFeedbackEnabled();
+  setFeedbackCategory('');
   document.getElementById('feedbackForm').classList.add('hidden');
   btn.classList.add('hidden');
   document.getElementById('feedbackThanks').classList.remove('hidden');
@@ -3527,6 +3527,41 @@ window.addEventListener('popstate', () => {
 });
 
 // ============================================================================
+// Tutorial-done flag
+// Saved on this device the moment the tour is finished or skipped. When the Apps Script action 'setTutorialDone'
+// exists (and checkUser returns tutorialDone), set TUTORIAL_BACKEND_READY = true: the flag is then also sent to the
+// server (retried quietly on every launch until it lands) and a server "done" is honoured on other devices.
+// ============================================================================
+const TUTORIAL_BACKEND_READY = true;
+let tutorialDoneServer = false;       // the server said tutorialDone: true
+let tutorialSyncBusy = false;
+function tutorialDoneKey_() { return 'tutorial_done:' + (chatId || 'anon'); }
+function tutorialDoneLocal() { try { return localStorage.getItem(tutorialDoneKey_()) === '1'; } catch (e) { return false; } }
+function tutorialIsDone() { return tutorialDoneServer || tutorialDoneLocal(); }
+function markTutorialDone() {
+  try { localStorage.setItem(tutorialDoneKey_(), '1'); } catch (e) { /* best-effort only */ }
+  syncTutorialDone();
+}
+async function syncTutorialDone() {
+  if (!TUTORIAL_BACKEND_READY || !chatId || tutorialPractice || tutorialSyncBusy || tutorialDoneServer || !tutorialDoneLocal()) return;
+  tutorialSyncBusy = true;
+  try {
+    const r = await callApi('setTutorialDone', { chatId });
+    if (!isErrorResult(r)) tutorialDoneServer = true;
+  } catch (e) { /* offline: the local flag stays and we retry on the next launch */ }
+  tutorialSyncBusy = false;
+}
+// Called with every checkUser answer.
+function noteTutorialFlag(r) {
+  if (r && (r.tutorialDone === true || r.tutorialDone === 'true' || r.tutorialDone === 1)) {
+    tutorialDoneServer = true;
+    try { localStorage.setItem(tutorialDoneKey_(), '1'); } catch (e) { /* ignore */ }
+  }
+  if (window.CSTutorial && window.CSTutorial.refresh) window.CSTutorial.refresh();
+  syncTutorialDone();
+}
+
+// ============================================================================
 // Spotlight tutorial: text dictionary + step data + engine
 // ============================================================================
 
@@ -3570,6 +3605,12 @@ const TUTORIAL_TEXT = {
     'ui.haveFolders': '✅ You already have folders. Add another, or continue.',
     'ui.addFailed': 'That link didn’t work. Check it, or tap Back to try another.',
     'ui.addBlocked': 'This link can’t be added yet. Tap Back and check it.',
+    'ui.practice': 'Practice',
+    'ui.demoFolderName': 'Demo folder (practice only)',
+    'ui.demoFolderNote': '🎓 You have no folders yet, so this is a practice folder. Nothing is saved to it.',
+    'ui.pickFirst': 'Pick a folder first. Tap Back to choose one.',
+    'ui.practiceName': 'My practice video',
+    'ui.practiceQueuedMsg': '🎓 Practice only: nothing was downloaded and nothing was added to your queue.',
 
     'step.intro.title': 'Welcome to Clip Sense 👋',
     'step.intro.text': 'Save videos to your Google Drive, turn them into MP3s, picture sets or captions, and find out where a clip is from.\n\nLet’s take a quick look around. It takes about a minute.',
@@ -3638,7 +3679,35 @@ const TUTORIAL_TEXT = {
     'step.toggles.text': 'These switches make life easier. “Auto-fill name” fills in the video title for you. “Remember last folder” picks your last folder again next time.',
 
     'step.closeSettings.title': 'All set here',
-    'step.closeSettings.text': 'All set here. Tap ✕ to go back Home.'
+    'step.closeSettings.text': 'All set here. Tap ✕ to go back Home.',
+
+    // ---- Part 3: practice download ----
+    'step.pGdrive.title': '📥 Video to GDrive',
+    'step.pGdrive.text': 'Let’s practice! Tap Video to GDrive. Nothing will be downloaded, it’s just a rehearsal.',
+
+    'step.pLink.title': 'Video link',
+    'step.pLink.text': 'Paste the video link here. Normally it fills in automatically when you share a video to the bot.',
+
+    'step.pName.title': 'Save as',
+    'step.pName.text': 'Name your file. You can edit this or leave the suggested name.',
+
+    'step.pFolder.title': 'Destination folder',
+    'step.pFolder.text': '❗ Choose carefully: your video will be saved exactly here.',
+
+    'step.pPick.title': 'Pick a folder',
+    'step.pPick.text': 'Tap the folder where your video should go. A › means it has folders inside.',
+
+    'step.pConfirm.title': 'Confirm your choice',
+    'step.pConfirm.text': 'Tap the button at the bottom to confirm. Want a different folder? Tap Back.',
+
+    'step.pDownload.title': 'Download',
+    'step.pDownload.text': 'Ready? Tap Download.',
+
+    'step.pQueued.title': 'That’s it! 🎉',
+    'step.pQueued.text': 'In real life your video joins the queue and is processed in a batch. You’ll get a Telegram message when it’s saved, so you can close the app.',
+
+    'step.finish.title': 'You’re ready! 🚀',
+    'step.finish.text': 'Replay this tour anytime from ❓ Help.'
   }
   // ar: { ... same keys ... },
 };
@@ -3706,7 +3775,33 @@ const TUTORIAL_STEPS = [
   { id: 'toggles', target: '#settingsPaneUser .toggleRow', shape: 'rect', level: 'info', mode: 'next', ui: { settings: true, tab: 'user' },
     title: 'step.toggles.title', text: 'step.toggles.text' },
   { id: 'closeSettings', target: '#settingsCloseBtn', shape: 'circle', level: 'tap', mode: 'tap', ui: { settings: true, tab: 'user' },
-    until: () => !tutIsOpen('settingsOverlay'), timeout: 1500, next: 'ui.done', title: 'step.closeSettings.title', text: 'step.closeSettings.text' }
+    until: () => !tutIsOpen('settingsOverlay'), timeout: 1500, title: 'step.closeSettings.title', text: 'step.closeSettings.text' },
+
+  // ---- Part 3: practice download (nothing real is created). ui.practice turns practice mode on for the step;
+  //      ui.job / ui.picker / ui.queued say which practice popups are open. gate = Next stays disabled until it returns true.
+  //      rewind = resuming (or Back-fallback) lands on this id instead, because the step needs practice state that can't be rebuilt. ----
+  { id: 'pGdrive', target: '#homeGdriveBtn', shape: 'circle', level: 'tap', mode: 'tap', ui: { practice: true },
+    until: () => tutIsOpen('jobOverlay'), timeout: 1800, title: 'step.pGdrive.title', text: 'step.pGdrive.text' },
+  { id: 'pLink', target: '#url-input', shape: 'rect', level: 'tap', mode: 'type', ui: { practice: true, job: true },
+    title: 'step.pLink.title', text: 'step.pLink.text' },
+  { id: 'pName', target: '#name-input', shape: 'rect', level: 'tap', mode: 'type', ui: { practice: true, job: true },
+    title: 'step.pName.title', text: 'step.pName.text' },
+  { id: 'pFolder', target: '#folder-select-btn', shape: 'rect', level: 'important', mode: 'tap', ui: { practice: true, job: true },
+    until: () => tutIsOpen('folderPickerOverlay'), timeout: 1800, title: 'step.pFolder.title', text: 'step.pFolder.text' },
+  { id: 'pPick', branch: true, target: '#folderPickerOverlay .help-body', shape: 'rect', level: 'tap', mode: 'type', ui: { practice: true, job: true, picker: true },
+    gate: () => !!pendingFolder, note: () => (document.querySelector('#folder-tree .tutDemoRow') ? 'ui.demoFolderNote' : ''),
+    title: 'step.pPick.title', text: 'step.pPick.text' },
+  { id: 'pConfirm', branch: true, target: '#folderPickerConfirmBtn', shape: 'rect', level: 'tap', mode: 'tap', ui: { practice: true, job: true, picker: true },
+    tapOk: () => !!pendingFolder, until: () => !tutIsOpen('folderPickerOverlay') && !!selectedFolder, timeout: 2500,
+    gate: () => !!selectedFolder, note: () => (pendingFolder ? '' : 'ui.pickFirst'),
+    title: 'step.pConfirm.title', text: 'step.pConfirm.text' },
+  { id: 'pDownload', rewind: 'pFolder', target: '#download-btn', shape: 'rect', level: 'tap', mode: 'tap', ui: { practice: true, job: true },
+    tapOk: () => !tutById('download-btn').classList.contains('blocked'), until: () => tutIsOpen('queuedOverlay'), timeout: 2500,
+    title: 'step.pDownload.title', text: 'step.pDownload.text' },
+  { id: 'pQueued', target: '#queuedOverlay .help-inner', shape: 'rect', level: 'info', mode: 'next', ui: { practice: true, job: true, queued: true },
+    title: 'step.pQueued.title', text: 'step.pQueued.text' },
+  { id: 'finish', target: null, shape: 'rect', level: 'info', mode: 'next', fx: 'celebrate', ui: { practice: true }, next: 'ui.done',
+    title: 'step.finish.title', text: 'step.finish.text' }
 ];
 
 window.TUTORIAL_READY = false;
@@ -3751,7 +3846,7 @@ window.TUTORIAL_READY = false;
     active: false, token: 0, idx: -1, step: null, els: [], moving: false, canNext: false, syncing: false, confirming: false,
     view: [], target: [], hls: [], anim: null, fx: null, cardShown: false, vw: 0, vh: 0, scroll0: 0,
     demoHold: false, pendingUsage: null, timer: 0, resizeTimer: 0,
-    hist: [], applying: false, tapTimer: 0, watch: 0, typeBase: '', folderBase: 0
+    hist: [], applying: false, tapTimer: 0, watch: 0, typeBase: '', folderBase: 0, gateOpen: null
   };
   let root, dim, boxFb, hlLayer, chipEl, card, elLevel, elTitle, elText, elDots, btnBack, btnNext, btnSkip, elCTitle, elCText, btnKeep, btnSkipYes, elHow, elTip, elNote, btnLater;
   const appEl = () => q('.app');
@@ -4005,7 +4100,7 @@ window.TUTORIAL_READY = false;
     elText.textContent = t(step.text);
     const blk = (el, key) => { el.textContent = key ? t(key) : ''; el.style.display = key ? 'block' : 'none'; };
     blk(elHow, step.how); blk(elTip, step.tip);
-    elNote.dataset.key = ''; updateNote(true);
+    elNote.dataset.key = '__reset__'; updateNote(true);   // sentinel: a new card always rewrites the note (a leftover note from the previous step must never linger)
     btnLater.textContent = t('ui.later'); btnLater.style.display = step.later ? 'flex' : 'none';
     Array.from(elDots.children).forEach((d, i) => { d.className = i < idx ? 'past' : i === idx ? 'on' : ''; });
     btnSkip.style.visibility = last ? 'hidden' : 'visible';
@@ -4029,8 +4124,9 @@ window.TUTORIAL_READY = false;
     const loading = T.syncing || (!T.canNext && step.mode === 'wait');
     if (loading) { const sp = document.createElement('span'); sp.className = 'spinner'; btnNext.appendChild(sp); }
     btnNext.appendChild(document.createTextNode(T.syncing ? t('ui.syncing') : t(step.next || 'ui.next')));
-    btnNext.disabled = !T.canNext;
+    btnNext.disabled = !T.canNext || !gateOk();
   }
+  const gateOk = () => !T.step || !T.step.gate || safe(T.step.gate, T);
   function setConfirm(on) {
     T.confirming = !!on;
     card.classList.toggle('confirming', !!on);
@@ -4109,7 +4205,46 @@ window.TUTORIAL_READY = false;
     const c = runCount(1400, draw);
     return { done: c.done, chip: example, stop() { c.cancel(); gbEl.innerHTML = snapGb; cells.forEach((e, i) => { e.textContent = snapC[i]; }); endDemo(); } };
   }
-  const FX = { ringDemo: fxRingDemo, countersDemo: fxCountersDemo, lifeDemo: fxLifeDemo };
+  // Finish card: the job-button press effect (glow ripples + tiny emoji), scaled up and bursting from behind the card.
+  function fxCelebrate() {
+    const none = { done: Promise.resolve(), stop() {}, chip: false };
+    if (reduced() || !root || !card) return none;
+    const tools = Array.from(document.querySelectorAll('.sat .satEmoji')).map(e => e.textContent.trim()).filter(Boolean);
+    const emojis = ['🎉', '✨'].concat(tools.length ? tools : ['📥', '🎵', '🖼️', '💬']);
+    const timers = []; let layer = null, dead = false;
+    const burst = () => {
+      if (dead || !layer) return;
+      const back = document.createElement('div'); back.className = 'satFx satFxBack';
+      for (let i = 0; i < 2; i++) { const ring = document.createElement('span'); ring.className = 'satRing'; ring.style.setProperty('--d', (i * 0.16) + 's'); back.appendChild(ring); }
+      const front = document.createElement('div'); front.className = 'satFx satFxFront';
+      const n = 14, size = 96;
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2 + (Math.random() - 0.5) * 0.6, d = size * (0.9 + Math.random() * 0.9);
+        const part = document.createElement('span'); part.className = 'satPart'; part.textContent = emojis[i % emojis.length];
+        part.style.setProperty('--dx', Math.round(Math.cos(a) * d) + 'px');
+        part.style.setProperty('--dy', Math.round(Math.sin(a) * d - size * 0.35) + 'px');   // drifts upward a little
+        part.style.setProperty('--rot', Math.round((Math.random() - 0.5) * 80) + 'deg');
+        part.style.setProperty('--d', (Math.random() * 0.14).toFixed(2) + 's');
+        front.appendChild(part);
+      }
+      layer.appendChild(back); layer.appendChild(front);
+      timers.push(setTimeout(() => { back.remove(); front.remove(); }, 1500));
+    };
+    // The card glides into place first; the burst starts from the middle of its top edge.
+    timers.push(setTimeout(() => {
+      if (dead || !root || !card) return;
+      const cr = card.getBoundingClientRect(), rr = root.getBoundingClientRect();
+      layer = document.createElement('div'); layer.className = 'tutCel';
+      layer.style.left = Math.round(cr.left + cr.width / 2 - rr.left) + 'px';
+      layer.style.top = Math.round(cr.top - rr.top) + 'px';
+      root.insertBefore(layer, card);
+      burst();
+      timers.push(setTimeout(burst, 520));
+      haptic('success');
+    }, 380));
+    return { done: Promise.resolve(), chip: false, stop() { dead = true; timers.forEach(clearTimeout); if (layer && layer.parentNode) layer.parentNode.removeChild(layer); layer = null; } };
+  }
+  const FX = { ringDemo: fxRingDemo, countersDemo: fxCountersDemo, lifeDemo: fxLifeDemo, celebrate: fxCelebrate };
   function stopFx() {
     if (T.fx) { const f = T.fx; T.fx = null; try { f.stop(); } catch (e) { /* ignore */ } }
     T.fxChip = false;
@@ -4124,6 +4259,7 @@ window.TUTORIAL_READY = false;
     const ui = step.ui || {};
     T.applying = true;
     try {
+      applyPracticeUi(ui);
       if (!ui.add && isOpen('addFolderOverlay')) closeAddFolderModal();
       if (!ui.settings) { if (isOpen('settingsOverlay')) closeSettings(); return; }
       if (!isOpen('settingsOverlay')) openSettings();
@@ -4142,6 +4278,89 @@ window.TUTORIAL_READY = false;
       if (isOpen('settingsOverlay')) closeSettings();
     } finally { T.applying = false; }
   }
+  // ---------------------------------------------------------------- Part 3: practice mode
+  // Everything practice touches lives in memory only (JS variables + on-screen fields). practiceBegin() snapshots the
+  // real form, practiceEnd() puts every bit of it back, so the real app never sees a sample link, a demo folder or a
+  // practice popup, even after Skip, Back, a screen switch or closing the app (nothing is written to storage meanwhile).
+  const PRACTICE_LINK = 'https://www.instagram.com/reel/PracticeDemo/';
+  let pSnap = null;
+  function practiceSyncFields() {
+    const url = tutById('url-input'), name = tutById('name-input');
+    tutById('clearUrlBtn').classList.toggle('hidden', !url.value);
+    tutById('clearNameBtn').classList.toggle('hidden', !name.value);
+    updateDownloadEnabled();
+  }
+  function practiceBegin() {
+    if (tutorialPractice) return;
+    const url = tutById('url-input'), name = tutById('name-input');
+    pSnap = {
+      url: url.value, name: name.value, auto: autoFilledName, folder: selectedFolder, pending: pendingFolder, mode: jobMode,
+      qMsg: tutById('queuedMsg').textContent, qIcon: tutById('queuedIcon').textContent
+    };
+    tutorialPractice = true;
+    document.documentElement.classList.add('tutPractice');
+    clearTimeout(titleFetchDebounce); titleFetchSeq++;      // a late YouTube title lookup must not land in the practice form
+    url.value = ''; name.value = ''; autoFilledName = false;
+    selectedFolder = null; pendingFolder = null; selectedRowEl = null; revealState = null;
+    updateMainPathPreview(null);
+    practiceSyncFields();
+  }
+  function practiceEnd() {
+    if (!tutorialPractice) return;
+    const s = pSnap; pSnap = null;
+    tutorialPractice = false;
+    document.documentElement.classList.remove('tutPractice');
+    clearTimeout(titleFetchDebounce); titleFetchSeq++;
+    // 1) the real form goes back first, so the duplicate-tab guard never publishes sample data
+    tutById('url-input').value = s ? s.url : '';
+    tutById('name-input').value = s ? s.name : '';
+    autoFilledName = s ? s.auto : false;
+    selectedFolder = s ? s.folder : null;
+    pendingFolder = s ? s.pending : null;
+    selectedRowEl = null; revealState = null;
+    clearAllSelectedRows();
+    updateMainPathPreview(selectedFolder ? selectedFolder.path : null);
+    if (s) setJobMode(s.mode);
+    tutById('jobOverlayTitle').removeAttribute('data-practice');
+    if (s) { tutById('queuedMsg').textContent = s.qMsg; tutById('queuedIcon').textContent = s.qIcon; }
+    practiceSyncFields();
+    // 2) then the practice popups go away
+    closeOverlay('queuedOverlay');
+    closeOverlay('folderPickerOverlay');
+    if (isOpen('jobOverlay')) closeJobPopup();
+    const tree = tutById('folder-tree'); if (tree) tree.innerHTML = '';   // the demo row never lingers; the next open reloads the real list
+  }
+  // Fill-if-empty, so Back / resume always find a complete practice form (never overwrites what the person typed).
+  function practiceFill() {
+    const url = tutById('url-input'), name = tutById('name-input');
+    if (!url.value.trim()) url.value = PRACTICE_LINK;
+    if (!name.value.trim()) name.value = t('ui.practiceName');
+    autoFilledName = false;
+    tutById('jobOverlayTitle').dataset.practice = ' · ' + t('ui.practice');
+    practiceSyncFields();
+  }
+  function practiceShowQueued() {
+    tutById('queuedMsg').textContent = t('ui.practiceQueuedMsg');
+    openOverlay('queuedOverlay');
+  }
+  // The real Download button lands here while practice is on (see its onclick): nothing is sent or stored.
+  function practiceSubmit() {
+    if (!tutorialPractice) return;
+    haptic('success');
+    practiceShowQueued();
+  }
+  function applyPracticeUi(ui) {
+    if (!ui.practice) { practiceEnd(); return; }
+    practiceBegin();
+    if (ui.job) {
+      if (!isOpen('jobOverlay')) openJobScreen('gdrive');
+      practiceFill();
+    } else if (isOpen('jobOverlay')) closeJobPopup();
+    if (ui.picker) { if (!isOpen('folderPickerOverlay')) { const b = tutById('folder-select-btn'); if (b) b.click(); } }
+    else if (isOpen('folderPickerOverlay')) closeOverlay('folderPickerOverlay');
+    if (ui.queued) practiceShowQueued(); else if (isOpen('queuedOverlay')) closeOverlay('queuedOverlay');
+  }
+
   function clearWatch() {
     clearTimeout(T.tapTimer); T.tapTimer = 0;
     clearInterval(T.watch); T.watch = 0;
@@ -4217,7 +4436,7 @@ window.TUTORIAL_READY = false;
     const token = ++T.token, step = STEPS[idx];
     const alive = () => T.active && token === T.token;
     stopFx(); clearWatch();
-    T.idx = idx; T.step = step; T.canNext = false; T.moving = true; T.syncing = false;
+    T.idx = idx; T.step = step; T.canNext = false; T.moving = true; T.syncing = false; T.gateOpen = null;
     root.classList.toggle('tapMode', (step.mode === 'tap' || step.mode === 'type') && CLIP_OK);
     if (T.confirming) setConfirm(false);
     saveProgress({ id: step.id, i: idx });
@@ -4270,7 +4489,7 @@ window.TUTORIAL_READY = false;
   }
 
   function next() {
-    if (!T.active || !T.canNext || T.confirming) return;
+    if (!T.active || !T.canNext || T.confirming || !gateOk()) return;
     if (T.idx >= STEPS.length - 1) { end('done'); return; }
     T.hist.push(T.idx);
     show(T.idx + 1);
@@ -4289,6 +4508,7 @@ window.TUTORIAL_READY = false;
     if (T.hist.length) { show(T.hist.pop()); return; }          // retrace exactly the way we came
     let j = T.idx - 1;                                           // resumed mid-tour: previous main step
     while (j > 0 && STEPS[j].branch) j--;
+    if (STEPS[j].rewind) j = Math.max(0, STEPS.findIndex(s => s.id === STEPS[j].rewind));   // needs practice state that no longer exists
     show(j);
   }
 
@@ -4296,6 +4516,7 @@ window.TUTORIAL_READY = false;
   function tick(force) {
     if (!T.active || !root) return;
     if (!isHome()) { end('aborted'); return; }
+    if (T.step && T.step.gate && !T.moving) { const g = !!safe(T.step.gate, T); if (g !== T.gateOpen) { T.gateOpen = g; renderNext(); } }
     if (T.moving && !force) return;
     const r = root.getBoundingClientRect();
     const sized = r.width !== T.vw || r.height !== T.vh;
@@ -4396,6 +4617,8 @@ window.TUTORIAL_READY = false;
       start = i >= 0 ? i : clamp(p.i || 0, 0, STEPS.length - 1);
       // Saved inside the "add a folder" branch: resume at its entry step (the popup state can't be trusted after a reopen).
       while (start > 0 && STEPS[start].branch) start--;
+      // Needs practice state that is gone after a reopen (e.g. the chosen folder): go back to where it is rebuilt.
+      if (STEPS[start].rewind) start = Math.max(0, STEPS.findIndex(s => s.id === STEPS[start].rewind));
     }
     mount();
     T.active = true; T.cardShown = false; T.confirming = false; T.step = null; T.idx = -1; T.hist = [];
@@ -4430,7 +4653,9 @@ window.TUTORIAL_READY = false;
     if (reason === 'done') saveProgress({ done: true });
     else if (reason === 'skipped') saveProgress({ skipped: true });
     if (reason === 'done') haptic('success');
+    practiceEnd();       // the real form, folder and popups come back exactly as they were (even after Skip / Back / a screen switch)
     closeTourPopups();   // Settings / Add-folder popups opened by the tour never stay behind
+    if (reason === 'done' || reason === 'skipped') markTutorialDone();   // saved on this device; sent to the server once TUTORIAL_BACKEND_READY
     const r = root; root = null;
     if (r) { r.classList.remove('on'); setTimeout(() => { if (r.parentNode) r.parentNode.removeChild(r); }, reduced() ? 0 : 280); }
     document.documentElement.classList.remove('tutLock');
@@ -4444,7 +4669,7 @@ window.TUTORIAL_READY = false;
   // ---------------------------------------------------------------- welcome strip + Help button
   function refreshWelcome() {
     const wrap = document.getElementById('tutWelcome'), btn = document.getElementById('welcomeTutorialBtn'), lead = document.getElementById('tutWelcomeText');
-    const p = loadProgress(), fresh = !(p && (p.done || p.skipped));
+    const p = loadProgress(), fresh = !(p && (p.done || p.skipped)) && !tutorialIsDone();
     const resume = !!(fresh && p && typeof p.i === 'number' && p.i > 0);
     if (lead) lead.textContent = t('ui.welcomeLead');
     if (btn) btn.textContent = resume ? t('ui.welcomeResume', { n: p.i + 1, total: STEPS.length }) : t('ui.welcomeBtn');
@@ -4478,7 +4703,11 @@ window.TUTORIAL_READY = false;
     next: next,
     stop: () => end('aborted'),
     steps: STEPS,
-    setLang: code => { langOverride = code; refreshWelcome(); }
+    setLang: code => { langOverride = code; refreshWelcome(); },
+    practiceSubmit: practiceSubmit,
+    text: t,
+    refresh: refreshWelcome,
+    get practice() { return tutorialPractice; }
   };
   window.startTutorial = startTutorial;
   window.TUTORIAL_READY = true;
