@@ -1875,6 +1875,9 @@ async function autoRegister(username) {
   setCachedProfile(chatId, { registered: true, username: result.username });
   setFooterStatus('Ready');
   haptic('success');
+  // The tour only starts from Home. A deep link (a video shared to the bot) would open a job popup instead,
+  // and startTutorial() silently refuses while that popup is open, so skip the deep link for a tour start.
+  if (tutorialStartAfterRegister) deepLinkScreen = null;
   enterHomeOrDeepLink();
   if (tutorialStartAfterRegister) {
     tutorialStartAfterRegister = false;
