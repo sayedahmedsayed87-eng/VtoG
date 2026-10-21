@@ -413,15 +413,12 @@ button.folderPickBtn:active{transform:scale(.98)}
 html.tutLock,html.tutLock body{overscroll-behavior:none}
 html.tutLock .app{overflow:hidden!important}
 
-/* Slim "take the tour" strip at the top of Home (hidden once the tour is finished or skipped) */
-.tutWelcome{position:absolute;left:0;right:0;top:0;z-index:6;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 40px 12px 14px;border-radius:16px;
-  background:linear-gradient(color-mix(in srgb,var(--button) 8%,transparent),color-mix(in srgb,var(--button) 8%,transparent)),var(--surface);
-  border:1px solid color-mix(in srgb,var(--button) 22%,transparent);box-shadow:0 10px 30px rgba(0,0,0,.14),0 2px 8px rgba(0,0,0,.08);
-  font-size:13.5px;font-weight:750;line-height:1.35;animation:tutWelcomeIn .28s ease both}
-@keyframes tutWelcomeIn{from{opacity:0;transform:translateY(-6px) scale(.98)}to{opacity:1;transform:none}}
+/* "New here? Take the tour" popup card: floats over the quota Start / End row (hidden once the tour is finished, skipped or closed) */
+.tutWelcome{position:absolute;left:0;right:0;top:0;z-index:6;display:flex;align-items:center;justify-content:center;gap:12px;min-height:58px;margin:0;padding:12px 40px 12px 16px;border-radius:16px;background:var(--surface);border:1px solid var(--border);box-shadow:0 10px 30px rgba(0,0,0,.14),0 2px 8px rgba(0,0,0,.06);font-size:14px;font-weight:750;line-height:1.3;animation:tutWelcomeIn .32s cubic-bezier(.2,.9,.3,1.2) both}
+.tutWelcome button#welcomeTutorialBtn{width:auto;flex:none;min-height:0;margin:0;padding:9px 16px;border-radius:11px;font-size:13px;font-weight:800}
+.tutWelcome .tutWelcomeClose{position:absolute;top:6px;right:6px;width:28px;height:28px;min-height:0;margin:0;padding:0;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--muted) 14%,transparent);color:var(--muted);border:0;box-shadow:none;font-size:18px;font-weight:700;line-height:1}
+@keyframes tutWelcomeIn{from{opacity:0;transform:translateY(-8px) scale(.97)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.tutWelcome{animation:none}}
-.tutWelcome button{width:auto;flex:none;min-height:0;margin:0;padding:9px 14px;border-radius:10px;font-size:13px;font-weight:800}
-.tutWelcome button.tutWelcomeClose{position:absolute;top:6px;right:6px;width:26px;height:26px;padding:0;border-radius:50%;font-size:17px;line-height:1;font-weight:700;color:var(--muted);background:color-mix(in srgb,var(--muted) 12%,transparent)}
 button.tutReplayBtn{margin-top:14px}
 
 /* The fixed layer above every overlay */
@@ -626,10 +623,11 @@ html.tutPractice #folderPickerOverlay .folder-tree{max-height:none}
     <!-- Home screen: usage dashboard. Row 1 = quota dates, row 2 = ring + job buttons, row 3 = lifetime usage -->
     <section id="screen-home" class="screen">
       <div class="uqWrap" id="uqWrap">
+        <!-- "New here?" popup card: floats over the quota Start / End row, closable -->
         <div class="tutWelcome hidden" id="tutWelcome" role="dialog" aria-label="Take the tour">
+          <button type="button" class="tutWelcomeClose" id="tutWelcomeClose" aria-label="Close">&times;</button>
           <span id="tutWelcomeText">👋 New here?</span>
           <button type="button" id="welcomeTutorialBtn">Take the tour</button>
-          <button type="button" class="tutWelcomeClose" id="tutWelcomeClose" aria-label="Close">&times;</button>
         </div>
         <div class="uqContent homeRows" id="uqContent">
 
@@ -1885,11 +1883,9 @@ async function autoRegister(username) {
   // The tour only starts from Home. A deep link (a video shared to the bot) would open a job popup instead,
   // and startTutorial() silently refuses while that popup is open, so skip the deep link for a tour start.
   if (tutorialStartAfterRegister) deepLinkScreen = null;
+  try { localStorage.removeItem('tut_welcome_closed:' + (chatId || 'anon')); } catch (e) { /* ignore */ }
   enterHomeOrDeepLink();
-  if (!tutorialStartAfterRegister && window.CSTutorial && window.CSTutorial.refresh) {
-    window.CSTutorial.refresh();
-    setTimeout(() => window.CSTutorial.refresh(), 400); // again once Home has finished drawing
-  }
+  if (window.CSTutorial && window.CSTutorial.refresh) window.CSTutorial.refresh();   // make sure the "New here?" card appears right after registering
   if (tutorialStartAfterRegister) {
     tutorialStartAfterRegister = false;
     // Gives Home a moment to draw; startTutorial() itself skips if another popup is open.
@@ -4868,30 +4864,30 @@ window.TUTORIAL_READY = false;
   }
 
   // ---------------------------------------------------------------- welcome strip + Help button
+  const welcomeClosedKey = () => 'tut_welcome_closed:' + (chatId || 'anon');
+  const welcomeClosed = () => { try { return localStorage.getItem(welcomeClosedKey()) === '1'; } catch (e) { return false; } };
   function refreshWelcome() {
     const wrap = document.getElementById('tutWelcome'), btn = document.getElementById('welcomeTutorialBtn'), lead = document.getElementById('tutWelcomeText');
-    const p = loadProgress(), fresh = !(p && (p.done || p.skipped)) && !tutorialIsDone() && !welcomeDismissed();
+    const p = loadProgress(), fresh = !(p && (p.done || p.skipped)) && !tutorialIsDone();
     const resume = !!(fresh && p && typeof p.i === 'number' && p.i > 0);
     if (lead) lead.textContent = t('ui.welcomeLead');
     if (btn) btn.textContent = resume ? t('ui.welcomeResume', { n: p.i + 1, total: STEPS.length }) : t('ui.welcomeBtn');
-    if (wrap) wrap.classList.toggle('hidden', !fresh || T.active);
+    if (wrap) wrap.classList.toggle('hidden', !fresh || T.active || welcomeClosed() || !isHome());
     const rb = document.getElementById('replayTutorialBtn');
     if (rb) { rb.textContent = t('ui.replay'); rb.classList.toggle('hidden', !isHome()); }
   }
 
-  // Closing the popup hides it for this session only; it returns next launch until the tour is done or skipped.
-  function welcomeDismissed() { try { return sessionStorage.getItem('tutWelcomeClosed') === '1'; } catch (e) { return false; } }
-  document.addEventListener('click', function (e) {
-    if (e.target.closest && e.target.closest('#tutWelcomeClose')) {
-      try { sessionStorage.setItem('tutWelcomeClosed', '1'); } catch (er) { /* ignore */ }
-      document.getElementById('tutWelcome').classList.add('hidden');
-    }
-  });
   // A tap on #welcomeTutorialBtn starts (or resumes) the tour. Delegated, so a button added later works too.
   document.addEventListener('click', function (e) {
     const b = e.target.closest && e.target.closest('#welcomeTutorialBtn');
     if (b) { e.preventDefault(); startTutorial(); }
   });
+  const welcomeCloseBtn = document.getElementById('tutWelcomeClose');
+  if (welcomeCloseBtn) welcomeCloseBtn.onclick = () => {
+    try { localStorage.setItem(welcomeClosedKey(), '1'); } catch (e) { /* best-effort */ }
+    haptic('tap');
+    refreshWelcome();   // "Replay tutorial" in Help stays available
+  };
   const replayBtn = document.getElementById('replayTutorialBtn');
   if (replayBtn) replayBtn.onclick = () => { closeOverlay('helpOverlay'); setTimeout(() => startTutorial({ restart: true }), 60); };
   const helpFabEl = document.getElementById('helpFab');
