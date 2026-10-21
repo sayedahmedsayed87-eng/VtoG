@@ -859,7 +859,7 @@ html.tutPractice #folderPickerOverlay .folder-tree{max-height:none}
 
             <div class="actionBlock">
               <div class="actionTitle">Clear app cache</div>
-              <p class="settingsHint">Removes the folder lists, usage numbers, sign-in shortcut and remembered folder stored on this device. The app reloads them from the server. Nothing in Drive or in your account changes.</p>
+              <p class="settingsHint">Removes the folder lists, usage numbers, sign-in shortcut, remembered folder and tour progress stored on this device. The app reloads them from the server. Nothing in Drive or in your account changes.</p>
               <button type="button" id="clearLocalCacheBtn" class="danger fitBtn">Clear app cache</button>
               <div id="clearCacheMsg" class="message hidden" style="margin-top:8px;margin-bottom:0"></div>
             </div>
@@ -958,6 +958,7 @@ html.tutPractice #folderPickerOverlay .folder-tree{max-height:none}
     <ul class="cacheList">
       <li>Saved folder lists on this device are deleted.</li>
       <li>Your remembered destination folder is forgotten.</li>
+      <li>The welcome tour starts over (its card shows again on Home).</li>
       <li>The next time you open the app, it has to load everything again, so it may feel slower for a moment.</li>
     </ul>
     <p class="message cacheNote">Nothing in Google Drive is deleted, and your downloads are not affected.</p>
@@ -1776,13 +1777,16 @@ async function init() {
 // shouldn't yank away an app the person is already looking at and using;
 // the next successful check (or the next action that actually requires
 // registration) will catch a real problem instead.
+let regEpoch = 0;   // bumped when registration starts: any checkUser answer that was requested earlier is stale and ignored
 async function verifyRegistrationInBackground() {
+  const ep = regEpoch;
   let result;
   try {
     result = await callApi('checkUser', { chatId });
   } catch (e) {
     return;
   }
+  if (ep !== regEpoch) return;
   if (isErrorResult(result)) return;
   noteTutorialFlag(result);
 
@@ -1801,6 +1805,7 @@ async function verifyRegistrationInBackground() {
 }
 
 async function checkRegistration() {
+  const ep = regEpoch;
   showScreen('screen-loading');
   document.getElementById('loadingIcon').textContent = '⏳';
   document.getElementById('loadingTitle').textContent = 'One moment';
@@ -1814,6 +1819,7 @@ async function checkRegistration() {
   } catch (e) {
     return showLoadError('No connection.');
   }
+  if (ep !== regEpoch) return;   // registration started meanwhile: this answer is out of date
   if (result.error) return showLoadError(result.error);
   noteTutorialFlag(result);
 
@@ -1849,6 +1855,7 @@ function isDeactivated(r) {
 }
 
 async function handleUnregistered(deactivated) {
+  if (!deactivated) resetTutorialForNewUser();   // row deleted / never existed: start the tour state from scratch
   const tgUsername = (tgUser && tgUser.username) ? tgUser.username : '';
   if (!tgUsername) {
     // No @username on the Telegram account — guide the user to set one.
@@ -1860,6 +1867,7 @@ async function handleUnregistered(deactivated) {
 }
 
 async function autoRegister(username) {
+  regEpoch++;
   showScreen('screen-loading');
   document.getElementById('loadingIcon').textContent = '⏳';
   document.getElementById('loadingTitle').textContent = 'Setting up your account';
@@ -2214,6 +2222,7 @@ document.getElementById('clearCacheConfirmBtn').onclick = () => {
   clearCachedProfile(chatId);
   clearRememberedFolder(chatId);
   clearCachedUsage(chatId);
+  resetTutorialForNewUser({ keepAccount: true });   // the "New here? Take the tour" card comes back
   usageReportLoaded = false;
   loadUsageReport(true); // Home shows the numbers now, so fetch them again right away
   const msg = document.getElementById('clearCacheMsg');
@@ -3735,11 +3744,12 @@ function tutorialDoneKey_() { return 'tutorial_done:' + (chatId || 'anon'); }
 function tutorialDoneLocal() { try { return localStorage.getItem(tutorialDoneKey_()) === '1'; } catch (e) { return false; } }
 function tutorialIsDone() { return tutorialDoneServer || tutorialDoneLocal(); }
 function markTutorialDone() {
+  try { localStorage.removeItem('tutorial_reset:' + (chatId || 'anon')); } catch (e) { /* ignore */ }
   try { localStorage.setItem(tutorialDoneKey_(), '1'); } catch (e) { /* best-effort only */ }
   syncTutorialDone();
 }
 async function syncTutorialDone() {
-  if (!TUTORIAL_BACKEND_READY || !chatId || tutorialPractice || tutorialSyncBusy || tutorialDoneServer || !tutorialDoneLocal()) return;
+  if (!TUTORIAL_BACKEND_READY || !chatId || !currentUsername || tutorialPractice || tutorialSyncBusy || tutorialDoneServer || !tutorialDoneLocal()) return;
   tutorialSyncBusy = true;
   try {
     const r = await callApi('setTutorialDone', { chatId });
@@ -3748,8 +3758,23 @@ async function syncTutorialDone() {
   tutorialSyncBusy = false;
 }
 // Called with every checkUser answer.
+function resetTutorialForNewUser(opts) {
+  tutorialDoneServer = false;
+  try {
+    const id = chatId || 'anon';
+    ['tutorial_done:', 'tutorial_v1:', 'tut_welcome_closed:', 'tutorial_reset:'].forEach(k => localStorage.removeItem(k + id));
+    // "Clear app cache": the account (and its server-side done flag) still exists, so remember to ignore that flag
+    // on this device until the tour is finished or skipped again.
+    if (opts && opts.keepAccount) localStorage.setItem('tutorial_reset:' + id, '1');
+  } catch (e) { /* ignore */ }
+  if (window.CSTutorial && window.CSTutorial.refresh) window.CSTutorial.refresh();
+}
 function noteTutorialFlag(r) {
-  if (r && (r.tutorialDone === true || r.tutorialDone === 'true' || r.tutorialDone === 1)) {
+  const registered = !!(r && (r.registered === true || r.registered === 'true' || r.registered === 1));
+  if (!registered) return;   // an unregistered answer must never mark the tour done or push a flag to the server
+  let resetHere = false;
+  try { resetHere = localStorage.getItem('tutorial_reset:' + (chatId || 'anon')) === '1'; } catch (e) { /* ignore */ }
+  if (!resetHere && r && (r.tutorialDone === true || r.tutorialDone === 'true' || r.tutorialDone === 1)) {
     tutorialDoneServer = true;
     try { localStorage.setItem(tutorialDoneKey_(), '1'); } catch (e) { /* ignore */ }
   }
@@ -4630,6 +4655,7 @@ window.TUTORIAL_READY = false;
   }
 
   async function show(idx) {
+    if (!T.active) return;
     const token = ++T.token, step = STEPS[idx];
     const alive = () => T.active && token === T.token;
     stopFx(); clearWatch();
@@ -4830,6 +4856,7 @@ window.TUTORIAL_READY = false;
     document.addEventListener('click', onDocClick, true);
     T.timer = setInterval(() => tick(false), 300);
     syncBackButton();
+    refreshWelcome();   // the "New here? / Continue tour" card goes away as soon as the tour starts
     requestAnimationFrame(() => { if (root) root.classList.add('on'); });
     show(start);
     return true;
@@ -4850,16 +4877,16 @@ window.TUTORIAL_READY = false;
     if (reason === 'done') saveProgress({ done: true });
     else if (reason === 'skipped') saveProgress({ skipped: true });
     if (reason === 'done') haptic('success');
-    practiceEnd();       // the real form, folder and popups come back exactly as they were (even after Skip / Back / a screen switch)
-    closeTourPopups();   // Settings / Add-folder popups opened by the tour never stay behind
-    if (reason === 'done' || reason === 'skipped') markTutorialDone();   // saved on this device; sent to the server once TUTORIAL_BACKEND_READY
+    try { practiceEnd(); } catch (e) { /* never block the rest of the cleanup */ }       // the real form, folder and popups come back exactly as they were (even after Skip / Back / a screen switch)
+    try { closeTourPopups(); } catch (e) { /* ignore */ }   // Settings / Add-folder popups opened by the tour never stay behind
+    if (reason === 'done' || reason === 'skipped') { try { markTutorialDone(); } catch (e) { /* ignore */ } }   // saved on this device; sent to the server once TUTORIAL_BACKEND_READY
     const r = root; root = null;
     if (r) { r.classList.remove('on'); setTimeout(() => { if (r.parentNode) r.parentNode.removeChild(r); }, reduced() ? 0 : 280); }
     document.documentElement.classList.remove('tutLock');
     const app = appEl(); if (app) app.scrollTop = T.scroll0;
     try { if (tg && typeof tg.enableVerticalSwipes === 'function') tg.enableVerticalSwipes(); } catch (e) { /* ignore */ }
     T.hls = []; T.view = []; T.target = []; T.els = [];
-    syncBackButton();
+    try { syncBackButton(); } catch (e) { /* ignore */ }
     refreshWelcome();
   }
 
