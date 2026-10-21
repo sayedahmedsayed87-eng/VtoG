@@ -365,6 +365,11 @@ button.fbChip.active{background:color-mix(in srgb,var(--button) 14%,transparent)
 .clearCacheHint{margin:0 0 8px;font-size:12.5px;line-height:1.55;font-weight:600}
 .cacheList{margin:8px 0 10px;padding:0 0 0 20px;text-align:left;font-size:13.5px;line-height:1.7;color:var(--text)}
 .cacheNote{font-size:12.5px;margin:0 0 4px}
+/* Settings > Data & account: one block per action (title, short explanation, button) */
+.actionBlock{padding:12px 0;border-top:1px solid var(--border)}
+.actionBlock:first-child{border-top:0;padding-top:0}
+.actionTitle{font-weight:800;font-size:14px;margin-bottom:2px}
+.actionBlock .settingsHint{margin:2px 0 8px;font-size:12.5px;line-height:1.55;font-weight:600}
 /* Destination folder: the whole field is the button */
 button.folderPickBtn{width:100%;min-height:50px;margin:0 0 12px;padding:11px 14px;justify-content:space-between;text-align:left;border-radius:12px;font-size:14px;font-weight:700;color:var(--text);background:color-mix(in srgb,var(--button) 10%,transparent);border:1.5px solid color-mix(in srgb,var(--button) 55%,transparent)}
 button.folderPickBtn.secondary{background:color-mix(in srgb,var(--muted) 8%,transparent);border:1.5px dashed color-mix(in srgb,var(--muted) 55%,transparent)}
@@ -684,7 +689,7 @@ html.tutPractice #folderPickerOverlay .folder-tree{max-height:none}
 
   </section>
 
-  <footer class="footer"><span id="footerStatus">Ready</span><span id="footerVersion">v1.0.0</span></footer>
+  <footer class="footer"><span id="footerStatus">Ready</span><span id="footerVersion">v1.1.0</span></footer>
 </main>
 
 <div id="appLock" class="appLock hidden" aria-hidden="true"></div>
@@ -820,11 +825,53 @@ html.tutPractice #folderPickerOverlay .folder-tree{max-height:none}
                 <span class="switchSlider"></span>
               </label>
             </div>
-            <div class="clearCacheBlock">
-              <p class="settingsHint clearCacheHint">Clear local cache removes the folder lists, usage report, sign-in shortcut and remembered folder saved on this device. Your Drive files and downloads are not affected.</p>
-              <button type="button" id="clearLocalCacheBtn" class="danger fitBtn">Clear local cache</button>
+            <div class="toggleRow">
+              <div class="toggleText">
+                <div class="toggleLabel">Close the app after sending a task</div>
+                <div class="toggleHint">After you tap "Got it" on a queued task, close Clip Sense automatically. Turn off to stay on Home and send another.</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="settingCloseAfterSend">
+                <span class="switchSlider"></span>
+              </label>
+            </div>
+            <div class="toggleRow">
+              <div class="toggleText">
+                <div class="toggleLabel">Vibration feedback</div>
+                <div class="toggleHint">A light vibration on taps, success and warnings (Telegram on phones only).</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="settingHaptics">
+                <span class="switchSlider"></span>
+              </label>
+            </div>
+          </div>
+        </details>
+
+        <details class="settingsCategory" id="settingsDataCat">
+          <summary>Data &amp; account</summary>
+          <div class="settingsCategoryBody">
+
+            <div class="actionBlock">
+              <div class="actionTitle">Clear app cache</div>
+              <p class="settingsHint">Removes the folder lists, usage numbers, sign-in shortcut and remembered folder stored on this device. The app reloads them from the server. Nothing in Drive or in your account changes.</p>
+              <button type="button" id="clearLocalCacheBtn" class="danger fitBtn">Clear app cache</button>
               <div id="clearCacheMsg" class="message hidden" style="margin-top:8px;margin-bottom:0"></div>
             </div>
+
+            <div class="actionBlock">
+              <div class="actionTitle">Clear download history</div>
+              <p class="settingsHint">Deletes the records of your finished and failed tasks from our servers. Tasks still waiting are not touched, and your usage totals stay the same.</p>
+              <button type="button" id="clearHistoryBtn" class="danger fitBtn">Clear download history</button>
+              <div id="clearHistoryMsg" class="message hidden" style="margin-top:8px;margin-bottom:0"></div>
+            </div>
+
+            <div class="actionBlock">
+              <div class="actionTitle">Deactivate account</div>
+              <p class="settingsHint">Cancels every task that is still waiting and removes your saved Drive folders from the app. You can come back any time by reactivating.</p>
+              <button type="button" id="deactivateBtn" class="danger fitBtn">Deactivate account</button>
+            </div>
+
           </div>
         </details>
 
@@ -912,6 +959,46 @@ html.tutPractice #folderPickerOverlay .folder-tree{max-height:none}
     <div class="confirmButtons">
       <button type="button" id="clearCacheConfirmBtn" class="danger">Confirm</button>
       <button type="button" id="clearCacheCancelBtn" class="success">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Clear download history confirmation overlay -->
+<div id="clearHistoryOverlay" class="help-overlay hidden">
+  <div class="help-inner" style="text-align:center">
+    <div class="icon warningIcon" style="margin:0 auto 12px">⚠️</div>
+    <h2>Clear download history?</h2>
+    <p class="message" style="margin-bottom:6px">Here's what will happen:</p>
+    <ul class="cacheList">
+      <li>The records of your finished and failed tasks (all task types) are deleted from our servers.</li>
+      <li>This can't be undone.</li>
+    </ul>
+    <p class="message cacheNote">Tasks that are still waiting are not touched. Files already in Google Drive stay where they are, and your usage totals and quota don't change.</p>
+    <div id="clearHistory-error" class="error-text hidden"></div>
+    <div class="confirmButtons">
+      <button type="button" id="clearHistoryConfirmBtn" class="danger">Confirm</button>
+      <button type="button" id="clearHistoryCancelBtn" class="success">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Deactivate account confirmation overlay -->
+<div id="deactivateOverlay" class="help-overlay hidden">
+  <div class="help-inner" style="text-align:center">
+    <div class="icon warningIcon" style="margin:0 auto 12px">⚠️</div>
+    <h2>Deactivate your account?</h2>
+    <p class="message" style="margin-bottom:6px">Here's what will happen:</p>
+    <ul class="cacheList">
+      <li>Every task of yours that is still waiting (all task types) is cancelled and removed. It will not be restored.</li>
+      <li>Your saved Google Drive folders are removed from the app. You will need to add them again.</li>
+      <li>You can't use Clip Sense until you reactivate. Opening the app shows a Reactivate button.</li>
+      <li>A task that is already being processed may still finish.</li>
+    </ul>
+    <p class="message cacheNote">Nothing in Google Drive is deleted. Your usage totals are kept, and your quota period keeps running while you're away, so reactivating doesn't reset it. To stop this app from accessing a folder, also remove its sharing in Google Drive.</p>
+    <div id="deactivate-error" class="error-text hidden"></div>
+    <div class="confirmButtons">
+      <button type="button" id="deactivateConfirmBtn" class="danger">Deactivate</button>
+      <button type="button" id="deactivateCancelBtn" class="success">Cancel</button>
     </div>
   </div>
 </div>
@@ -1034,7 +1121,7 @@ let currentUsername = '';
 // falls back to defaults if storage is unavailable or corrupt.
 const AppSettings = (() => {
   const KEY = 'userSettings_v1';
-  const DEFAULTS = { autoFillName: true, rememberFolder: true };
+  const DEFAULTS = { autoFillName: true, rememberFolder: true, closeAfterSend: true, haptics: true };
 
   function load() {
     try {
@@ -1182,7 +1269,7 @@ const CALL_API_MAX_ATTEMPTS = 3;
 // While the tour's practice download is on screen, anything that would change data is refused right here
 // (the submit button is also intercepted earlier, this is the safety net). Reads such as listRootFolders still work.
 let accountRecheckBusy = false;
-const PRACTICE_BLOCKED_ACTIONS =/^(submit|create|add|remove|register|set)/i;
+const PRACTICE_BLOCKED_ACTIONS =/^(submit|create|add|remove|register|set|clear|deactivate)/i;
 async function callApi(action, params, attempt) {
   if (tutorialPractice && PRACTICE_BLOCKED_ACTIONS.test(String(action))) return { error: 'Practice mode: nothing was sent.' };
   attempt = attempt || 1;
@@ -1250,10 +1337,15 @@ function setCachedProfile(chatId, data) {
   } catch (e) { /* best-effort only — a live check still works without this */ }
 }
 
+// Called whenever the server says this account no longer exists or is inactive. Wipes everything
+// this device remembers about it (profile, usage numbers, folder listings) so none of it keeps showing.
 function clearCachedProfile(chatId) {
   try {
     localStorage.removeItem(profileCacheKey_(chatId));
   } catch (e) { /* nothing to clean up if storage was never available */ }
+  try { clearCachedUsage(chatId); } catch (e) { /* ignore */ }
+  try { FolderCache.clearAll(chatId); } catch (e) { /* ignore */ }
+  usageReportLoaded = false;
 }
 
 // ---- Folder listing cache (per device, localStorage) ----
@@ -1525,6 +1617,7 @@ function renderConflictScreen(link) {
 // duplicate-tab case above, there's no background-view restriction to fight
 // here, so no retry loop is needed).
 function closeAppAfterSuccess() {
+  if (userSettings.closeAfterSend === false) return; // person chose to stay in the app
   if (tg && typeof tg.close === 'function') tg.close();
 }
 function checkLocalForNewerInstance() {
@@ -2075,6 +2168,8 @@ function renderUserSettingsPane() {
   const rememberToggle = document.getElementById('settingRememberFolder');
   autoFillToggle.checked = !!userSettings.autoFillName;
   rememberToggle.checked = !!userSettings.rememberFolder;
+  document.getElementById('settingCloseAfterSend').checked = userSettings.closeAfterSend !== false;
+  document.getElementById('settingHaptics').checked = userSettings.haptics !== false;
 }
 
 document.getElementById('settingAutoFillName').addEventListener('change', (e) => {
@@ -2086,6 +2181,16 @@ document.getElementById('settingRememberFolder').addEventListener('change', (e) 
   AppSettings.save(userSettings);
   if (!e.target.checked) clearRememberedFolder(chatId);
   else if (selectedFolder) saveRememberedFolder(chatId, selectedFolder);
+});
+
+document.getElementById('settingCloseAfterSend').addEventListener('change', (e) => {
+  userSettings.closeAfterSend = e.target.checked;
+  AppSettings.save(userSettings);
+});
+document.getElementById('settingHaptics').addEventListener('change', (e) => {
+  userSettings.haptics = e.target.checked;
+  AppSettings.save(userSettings);
+  if (e.target.checked) haptic('tap');
 });
 
 document.getElementById('clearLocalCacheBtn').onclick = () => openOverlay('clearCacheOverlay');
@@ -2106,6 +2211,75 @@ document.getElementById('clearCacheConfirmBtn').onclick = () => {
   msg.classList.remove('hidden');
   setTimeout(() => msg.classList.add('hidden'), 3000);
 };
+
+// ---- Clear download history / Deactivate account (server-side, each behind a confirmation popup) ----
+// Both actions are idempotent on the server, so callApi's transport retry is safe.
+let accountActionBusy = false;
+function wireAccountAction_(cfg) {
+  const overlay = document.getElementById(cfg.overlay);
+  const confirmBtn = document.getElementById(cfg.confirmBtn);
+  const cancelBtn = document.getElementById(cfg.cancelBtn);
+  document.getElementById(cfg.openBtn).onclick = () => {
+    if (tutorialPractice) return; // the tour never runs real account actions
+    clearError(cfg.errorId);
+    openOverlay(cfg.overlay);
+  };
+  cancelBtn.onclick = () => { if (!accountActionBusy) closeOverlay(cfg.overlay); };
+  overlay.addEventListener('click', function (e) { if (e.target === overlay && !accountActionBusy) closeOverlay(cfg.overlay); });
+  confirmBtn.onclick = async () => {
+    if (accountActionBusy) return;
+    accountActionBusy = true;
+    clearError(cfg.errorId);
+    setButtonLoading(confirmBtn, true, cfg.busyText);
+    cancelBtn.disabled = true;
+    let result;
+    try {
+      result = await callApi(cfg.action, {});
+    } catch (e) {
+      result = { error: 'No connection. Please try again.' };
+    }
+    accountActionBusy = false;
+    setButtonLoading(confirmBtn, false);
+    cancelBtn.disabled = false;
+    const ok = result && (!result.error || (cfg.okCode && result.code === cfg.okCode));
+    if (!ok) {
+      showError(cfg.errorId, (result && result.error) || 'Something went wrong. Please try again.');
+      haptic('warning');
+      return;
+    }
+    closeOverlay(cfg.overlay);
+    cfg.onDone(result);
+  };
+}
+
+wireAccountAction_({
+  openBtn: 'clearHistoryBtn', overlay: 'clearHistoryOverlay', confirmBtn: 'clearHistoryConfirmBtn',
+  cancelBtn: 'clearHistoryCancelBtn', errorId: 'clearHistory-error', busyText: 'Clearing…',
+  action: 'clearDownloadHistory',
+  onDone: (r) => {
+    haptic('success');
+    const n = Number(r.removed) || 0;
+    const msg = document.getElementById('clearHistoryMsg');
+    msg.textContent = n ? 'Download history cleared (' + n + (n === 1 ? ' record' : ' records') + ').' : 'Nothing to clear. Your history is already empty.';
+    msg.classList.remove('hidden');
+    setTimeout(() => msg.classList.add('hidden'), 4000);
+  }
+});
+
+wireAccountAction_({
+  openBtn: 'deactivateBtn', overlay: 'deactivateOverlay', confirmBtn: 'deactivateConfirmBtn',
+  cancelBtn: 'deactivateCancelBtn', errorId: 'deactivate-error', busyText: 'Deactivating…',
+  action: 'deactivateAccount', okCode: 'deactivated', // already deactivated (e.g. a retried request) counts as done
+  onDone: () => {
+    haptic('success');
+    closeSettings();
+    clearCachedProfile(chatId);      // also clears the usage and folder caches on this device
+    clearRememberedFolder(chatId);
+    clearAllFields();
+    currentUsername = '';
+    handleUnregistered(true);        // shows "Welcome back" with the Reactivate button
+  }
+});
 
 // ---- User settings pane: usage report ----
 // getUserStats (Users.js) returns { periodStart, periodEnd, gbUsedThisPeriod,
@@ -3499,6 +3673,8 @@ const OVERLAY_CLOSERS = {
   feedbackOverlay: closeFeedback,
   helpOverlay: () => closeOverlay('helpOverlay'),
   clearCacheOverlay: () => document.getElementById('clearCacheCancelBtn').click(),
+  clearHistoryOverlay: () => document.getElementById('clearHistoryCancelBtn').click(),
+  deactivateOverlay: () => document.getElementById('deactivateCancelBtn').click(),
   removeConfirmOverlay: () => document.getElementById('removeCancelBtn').click(),
   addFolderOverlay: closeAddFolderModal,
   settingsOverlay: closeSettings,
@@ -3577,6 +3753,7 @@ function noteTutorialFlag(r) {
 
 // Light haptic tick (Telegram only; silently does nothing in a plain browser).
 function haptic(kind) {
+  if (userSettings && userSettings.haptics === false) return; // turned off in Settings
   try {
     const h = tg && tg.HapticFeedback;
     if (!h) return;
